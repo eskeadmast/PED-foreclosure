@@ -842,3 +842,12 @@ td {
     display: flex;
   }
 }
+@media (max-width: 768px) {
+  .nav-links {
+    display: none; /* Hidden by default on mobile */
+    /* ... other styles ... */
+  }
+  .nav-links.active {
+    display: flex; /* Shown when active class is toggled */
+  }
+}

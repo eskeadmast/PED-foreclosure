@@ -1,6 +1,6 @@
 /**
  * ELITE REGISTRY - COMPLETE SYSTEM SCRIPT
- * Full Unomitted Code: Gatekeeper + Auth + CRUD + Reports + Mobile
+ * Full Unomitted Code: Gatekeeper + Auth + CRUD + Reports + Mobile Menu Fix
  */
 
 // --- 1. GATEKEEPER ---
@@ -361,14 +361,24 @@ window.closeModal = () => {
 document.addEventListener("DOMContentLoaded", () => {
   updateAvatarUI();
 
-  // Mobile Hamburger Menu Logic
+  // --- HAMBURGER MENU CODE ---
   const menuBtn = document.getElementById("mobile-menu-btn");
   const navLinks = document.getElementById("nav-links");
+
   if (menuBtn && navLinks) {
-    menuBtn.addEventListener("click", () => {
+    menuBtn.addEventListener("click", (e) => {
+      e.stopPropagation(); // Prevents click from bubbling to document
       navLinks.classList.toggle("active");
     });
+
+    // Close menu when clicking anywhere else on the document
+    document.addEventListener("click", (e) => {
+      if (!navLinks.contains(e.target) && e.target !== menuBtn) {
+        navLinks.classList.remove("active");
+      }
+    });
   }
+  // --- END HAMBURGER MENU CODE ---
 
   // Auth Form Listener
   const loginForm = document.getElementById("login-form");
