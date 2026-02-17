@@ -48,7 +48,7 @@ const login = async (username, password) => {
     if (!response.ok) throw new Error(result.message || "Auth Failed");
 
     localStorage.setItem("isLoggedIn", "true");
-    localStorage.setItem("userFullName", result.data?.user?.fullName || "User");
+    localStorage.setItem("userFullName", result.data?.user?.name || "User");
     window.location.replace("dashboard.html");
   } catch (error) {
     alert("Authentication Failed: " + error.message);
@@ -61,7 +61,7 @@ window.logout = function () {
 };
 
 function updateAvatarUI() {
-  const fullName = localStorage.getItem("userFullName") || "User";
+  const fullName = localStorage.getItem("name") || "User";
   const container = document.getElementById("user-avatar-container");
   if (container) {
     const parts = fullName.trim().split(" ");
