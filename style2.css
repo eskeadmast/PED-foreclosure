@@ -1,5 +1,5 @@
 /* --- GOOGLE FONTS & GLOBAL RESET --- */
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&display=swap");
 
 * {
   box-sizing: border-box;
@@ -25,7 +25,7 @@
 
 body {
   font-size: 16px;
-  font-family: 'DM Sans', sans-serif;
+  font-family: "DM Sans", sans-serif;
   background: var(--slate-100);
   margin: 0;
   padding: 0;
@@ -804,4 +804,41 @@ td {
 
 .btn-login:hover {
   background: var(--primary-hover);
+}
+/* HAMBURGER MENU CSS */
+@media (max-width: 768px) {
+  .menu-toggle {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    background: none;
+    border: none;
+    cursor: pointer;
+  }
+
+  .menu-toggle span {
+    width: 25px;
+    height: 3px;
+    background-color: #333;
+    transition: 0.3s;
+  }
+
+  .nav-links {
+    display: none; /* Hide by default on mobile */
+    flex-direction: column;
+    position: absolute;
+    top: 70px;
+    right: 20px;
+    background: white;
+    width: 200px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    padding: 10px;
+    z-index: 1000;
+  }
+
+  /* When the .active class is added via JS, show the menu */
+  .nav-links.active {
+    display: flex;
+  }
 }
