@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Executive Reports - Foreclosure Management System</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+    <link rel="stylesheet" href="style2.css" />
+  </head>
+  <body>
+    <div class="app-container">
+      <div class="print-only-header" style="display: none">
+        <div
+          style="
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+          "
+        >
+          <img src="./logo.jpg" style="height: 50px" />
+          <div style="text-align: right">
+            <h1>Foreclosure Report</h1>
+            <p>Generated: <span id="print-date"></span></p>
+          </div>
+        </div>
+        <hr />
+      </div>
+
+      <header class="main-header no-print">
+        <div class="nav-container">
+          <div class="logo">
+            <div class="logo-icon"><img src="./logo.jpg" alt="logo" /></div>
+            <span><strong>PED FMS</strong></span>
+          </div>
+
+          <button class="menu-toggle" id="mobile-menu-btn">
+            <span></span><span></span><span></span>
+          </button>
+
+          <nav class="nav-links" id="nav-links">
+            <div id="user-avatar-container"></div>
+            <a href="dashboard.html">Dashboard</a>
+            <a href="report.html">Reports</a>
+            <a href="#" onclick="logout()" class="logout-link">Logout</a>
+          </nav>
+        </div>
+      </header>
+
+      <section class="report-controls-container no-print">
+        <div class="date-picker-row">
+          <div class="input-box" style="flex: 1">
+            <label>Start Date</label>
+            <input type="date" id="start-date" />
+          </div>
+          <div class="input-box" style="flex: 1">
+            <label>End Date</label>
+            <input type="date" id="end-date" />
+          </div>
+          <button class="btn btn-util" onclick="window.print()">
+            Download PDF
+          </button>
+        </div>
+
+        <div class="report-button-group">
+          <button
+            class="btn-report"
+            onclick="runCustomReport('Monthly Report')"
+          >
+            Monthly Report
+          </button>
+          <button
+            class="btn-report"
+            onclick="runCustomReport('Quarterly Report')"
+          >
+            Quarterly Report
+          </button>
+          <button
+            class="btn-report"
+            onclick="runCustomReport('Half-Year Report')"
+          >
+            Half-Year Report
+          </button>
+          <button
+            class="btn-report"
+            onclick="runCustomReport('9-Month Report')"
+          >
+            9-Month Report
+          </button>
+          <button class="btn-report" onclick="runCustomReport('Yearly Report')">
+            Yearly Report
+          </button>
+        </div>
+      </section>
+
+      <div id="active-report-display">
+        <div
+          style="text-align: center; padding: 50px; color: #94a3b8"
+          class="no-print"
+        >
+          <p>Select dates and a report type to begin.</p>
+        </div>
+      </div>
+    </div>
+    <script type="module" src="./script.js"></script>
+  </body>
+</html>

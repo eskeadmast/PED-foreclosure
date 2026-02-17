@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Login - Foreclosure Management System</title>
+    <link rel="stylesheet" href="style2.css" />
+  </head>
+  <body>
+    <header class="main-header">
+      <div class="nav-container">
+        <div class="logo">
+          <div class="logo-icon"><img src="./logo.jpg" alt="logo" /></div>
+          <span><strong>PED FMS</strong></span>
+        </div>
+      </div>
+    </header>
+
+    <main class="login-wrapper">
+      <div class="login-card">
+        <h2>Welcome Back</h2>
+        <p>
+          Please enter your credentials to access the Foreclosure Management
+          System.
+        </p>
+
+        <form id="login-form">
+          <div class="input-box">
+            <label>Username</label>
+            <input
+              type="text"
+              id="username"
+              placeholder="Enter username"
+              required
+            />
+          </div>
+
+          <div class="input-box">
+            <label>Password</label>
+            <input
+              type="password"
+              id="password"
+              placeholder="••••••••"
+              required
+            />
+          </div>
+
+          <button type="submit" class="btn btn-login">Sign In</button>
+        </form>
+
+        <div class="login-footer">&copy; 2026 Foreclosure Registry System</div>
+      </div>
+    </main>
+
+    <script type="module" src="./script.js"></script>
+  </body>
+</html>

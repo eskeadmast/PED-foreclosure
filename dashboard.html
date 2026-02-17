@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=S, initial-scale=1.0" />
+    <title>Foreclosure Management System</title>
+    <link rel="stylesheet" href="style2.css">
+  </head>
+  <body>
+    <div class="app-container">
+        <header class="main-header no-print">
+  <div class="nav-container">
+    <div class="logo">
+      <div class="logo-icon"><img src="./logo.jpg" alt="logo" /></div>
+      <span><strong>PED FMS</strong></span>
+    </div>
+    
+    <button class="menu-toggle" id="mobile-menu-btn">
+      <span></span><span></span><span></span>
+    </button>
+    
+    <nav class="nav-links" id="nav-links">
+      <div id="user-avatar-container"></div> <a href="dashboard.html">Dashboard</a>
+      <a href="report.html">Reports</a>
+      <a href="#" onclick="logout()" class="logout-link">Logout</a>
+    </nav>
+  </div>
+</header>
+      <section class="header-section">
+        <div
+          style="
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+          "
+        >
+          <h2 style="margin: 0; font-size: 1.25em">
+            Foreclosure Management System
+          </h2>
+          <div class="export-wrapper">
+            <button class="btn btn-util" id="exportBtn">
+              Export Options &#9660;
+            </button>
+            <div class="export-menu" id="exportMenu">
+              <button onclick="downloadPDF()">Download PDF</button>
+              <button onclick="downloadCSV()">Download CSV</button>
+            </div>
+          </div>
+        </div>
+        <section class="stats-grid">
+          <div class="stat-item" style="border-color: #2563eb">
+            <span class="stat-val" id="count-total">0</span>
+            <span class="stat-name">Total</span>
+          </div>
+          <div class="stat-item" style="border-color: #10b981">
+            <span class="stat-val" id="count-reported">0</span>
+            <span class="stat-name">Reported</span>
+          </div>
+          <div class="stat-item" style="border-color: #f59e0b">
+            <span class="stat-val" id="count-in-progress">0</span>
+            <span class="stat-name">In Progress</span>
+          </div>
+          <div class="stat-item" style="border-color: #64748b">
+            <span class="stat-val" id="count-pending">0</span>
+            <span class="stat-name">Pending</span>
+          </div>
+          <div class="stat-item" style="border-color: #ef4444">
+            <span class="stat-val" id="count-canceled">0</span>
+            <span class="stat-name">Canceled</span>
+          </div>
+        </section>
+        <section class="filter-flex">
+            <div class="input-box">
+                <label for="find-txt">Search Applicant / Branch</label>
+                <input type="text" id="find-txt" placeholder="Search..." />
+            </div>
+            <div class="date-group">
+                <div class="input-box">
+                    <label for="find-from">From</label>
+                    <input type="date" id="find-from" />
+                </div>
+                <div class="input-box">
+                    <label for="find-to">To</label>
+                    <input type="date" id="find-to" />
+                </div>
+            </div>
+            <div class="input-box">
+
+                <button class="btn btn-add" id="openAddModal">
+                &plus; Add New Data
+                </button>
+            </div>
+        </section>
+        <section class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Applicant</th>
+                <th>Branch</th>
+                <th>Site Location</th>
+                <th>Collateral Type</th>
+                <th>Number of Collateral</th>
+                <th>Date Requested</th>
+                <th>Date Appointed</th>
+                <th>Assigned Enginner</th>
+                <th>Status</th>
+                <th>Date Reported</th>
+                <th>Remark</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="desktop-body"></tbody>
+          </table>
+        </section>
+        <div id="mobile-cards-container" class="card-view"></div>
+      </section>
+      <section class="modal-bg" id="modalOverlay">
+        <div class="modal-box">
+          <h3 id="modalTitle" style="margin: 0 0 0.9375em 0">
+            Foreclosure Details
+          </h3>
+          <div class="input-box">
+            <label for="applicant">Applicant's name</label>
+            <input type="text" id="applicant" />
+          </div>
+          <div class="input-box">
+            <label for="branch">Branch</label>
+            <input type="text" id="branch" />
+          </div>
+          <div class="input-box">
+            <label for="location">Location</label>
+            <input type="text" id="location" />
+          </div>
+          <div class="input-box">
+            
+            <label for="collateral-type">Collateral Type</label>
+            <select id="collateral-type" style="padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; background: white;">
+                        <option value="building" selected>Building</option>
+                        <option value="vehicle" >Vehicle</option>
+                        <option value="machinery">Machinery</option>
+                        
+                    </select>
+            <!-- <input type="text" id="collateral-type" /> -->
+          </div>
+          <div class="input-box">
+            <label for="num-collateral">Number of Collaterals</label>
+            <input type="number" min="1" id="num-collateral" />
+          </div>
+          <div class="input-box">
+            <label for="req-date">Date Requested</label>
+            <input type="date" id="req-date" />
+          </div>
+          <div id="progressiveSection" style="display: none; border-top: 2px solid #f1f5f9;padding: 15px;margin-top: 15px">
+
+              <div class="input-box">
+                  <label for="app-date">Date Appointed</label>
+                  <input type="date" id="app-date" />
+                </div>
+                <div class="input-box">
+                    <label for="engineer">Assigned Engineer</label>
+                    <input type="text" id="engineer" />
+                </div>
+                <div class="input-box">
+                    <label for="reported-date" style="text-transform: capitalize;">Date Reported</label>
+                    <input type="date" id="reported-date" />
+                </div>
+                <div id="statusToggleSelection" style="display: flex; flex-direction: column;gap: 4px;margin-top: 15px;">
+                    <label style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;" for="">Update Status</label>
+                    <select id="status" style="padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; background: white;">
+                        <option value="reported">Reported</option>
+                        <option value="pending" selected>Pending</option>
+                        <option value="in-progress">In Progress</option>
+                        <option value="canceled">Canceled</option>
+                    </select>
+                </div>
+                <div class="input-box">
+                    <label for="remark">Remark</label>
+                    <textarea name="" id="remark"></textarea>
+                </div>
+            </div>
+        <div style="position: sticky;bottom: -25px;background: #fff;padding-top: 15px;display: flex;gap: 10px;">
+            <button class="btn btn-cancel" style="background: #64748b; flex: 1;" >Cancel</button>
+            <button class="btn btn-add" style=" flex: 1; margin: 0; margin-top: .5rem;" id="saveData">Save</button>
+        </div>
+      </section>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+    <script type="module" src="./script.js"></script>
+  </body>
+</html>
