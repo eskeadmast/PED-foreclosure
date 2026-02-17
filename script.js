@@ -393,6 +393,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const saveBtn = document.getElementById("saveData");
   if (saveBtn) saveBtn.addEventListener("click", handleSaveData);
+  const cancelBtn = document.querySelector(".btn-cancel");
+  if (cancelBtn) cancelBtn.addEventListener("click", closeModal);
 
   const searchTxt = document.getElementById("find-txt");
   const dateFrom = document.getElementById("find-from");
