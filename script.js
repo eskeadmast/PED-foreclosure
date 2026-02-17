@@ -1,9 +1,10 @@
 /**
  * ELITE REGISTRY - COMPLETE SYSTEM SCRIPT
- * Full Code: Auth + API + Render + Mobile + Amended Reports + PDF + CRUD
+ * Full Unomitted Code: Gatekeeper + Auth + CRUD + Reports + Mobile
  */
 
 // --- 1. GATEKEEPER ---
+// This handles session security and prevents unauthorized page access.
 (function gatekeeper() {
   const isLoggedIn = localStorage.getItem("isLoggedIn") === "true";
   const path = window.location.pathname;
@@ -17,6 +18,7 @@
   }
 })();
 
+// Global State Variables
 let editId = null;
 let foreclosureData = [];
 const API_BASE_URL = "https://ped-foreclosure-back.onrender.com/api/v1";
@@ -32,22 +34,7 @@ const formatDate = (dateStr) => {
   return `${day}-${month}-${year}`;
 };
 
-// --- 3. INITIALIZATION ---
-window.onload = async () => {
-  updateAvatarUI();
-  // Initialize search and filter listeners
-  setupFilters();
-
-  if (
-    document.getElementById("desktop-body") ||
-    document.getElementById("mobile-cards-container") ||
-    document.getElementById("active-report-display")
-  ) {
-    await loadDataFromDB();
-  }
-};
-
-// --- 4. AUTHENTICATION ---
+// --- 3. AUTHENTICATION ---
 const login = async (username, password) => {
   try {
     const response = await fetch(`${API_BASE_URL}/users/login`, {
@@ -86,21 +73,83 @@ function updateAvatarUI() {
   }
 }
 
-// --- 5. API OPERATIONS (CRUD) ---
-async function loadDataFromDB() {
+// --- 4. API OPERATIONS (CRUD) ---
+// Fetches all data from Render
+window.loadDataFromDB = async () => {
   try {
     const response = await fetch(`${API_BASE_URL}/foreclosures`, {
       credentials: "include",
     });
     if (response.status === 401) return logout();
     const result = await response.json();
+    // Normalize data structure from API response
     foreclosureData = result.data?.data || result.data || [];
     render();
   } catch (error) {
     console.error("Fetch error:", error);
   }
-}
+};
 
+// Deletes a record by ID
+window.deleteData = async (id) => {
+  if (!confirm("Are you sure you want to permanently delete this record?"))
+    return;
+  try {
+    const resp = await fetch(`${API_BASE_URL}/foreclosures/${id}`, {
+      method: "DELETE",
+      credentials: "include",
+    });
+
+    if (resp.ok) {
+      // Refresh the local data after successful deletion
+      await window.loadDataFromDB();
+    } else {
+      const errData = await resp.json();
+      alert("Delete failed: " + (errData.message || "Unknown error"));
+    }
+  } catch (err) {
+    console.error("Delete error:", err);
+  }
+};
+
+// Opens the modal and populates it with existing data for editing
+window.openEdit = (id) => {
+  editId = id;
+  const item = foreclosureData.find((x) => (x._id || x.id) === id);
+  if (!item) return;
+
+  // UI Adjustment
+  document.getElementById("modalTitle").textContent = "Edit Record";
+  document.getElementById("progressiveSection").style.display = "block";
+
+  // Mapping API data to Form IDs
+  document.getElementById("applicant").value = item.applicantName || "";
+  document.getElementById("branch").value = item.branch || "";
+  document.getElementById("location").value = item.siteLocation || "";
+  document.getElementById("collateral-type").value =
+    item.collateralType || "building";
+  document.getElementById("num-collateral").value =
+    item.numberOfCollaterals || 0;
+
+  // Format dates for input[type="date"] (YYYY-MM-DD)
+  document.getElementById("req-date").value = item.dateOfRequest
+    ? item.dateOfRequest.split("T")[0]
+    : "";
+  document.getElementById("app-date").value = item.dateOfAppointment
+    ? item.dateOfAppointment.split("T")[0]
+    : "";
+  document.getElementById("reported-date").value = item.dateOfReport
+    ? item.dateOfReport.split("T")[0]
+    : "";
+
+  document.getElementById("engineer").value = item.engineerName || "";
+  document.getElementById("status").value = item.reportStatus || "pending";
+  document.getElementById("remark").value = item.remarks || "";
+
+  document.getElementById("modalOverlay").style.display = "flex";
+};
+
+// Handles both Creating (POST) and Updating (PATCH)
 async function handleSaveData(e) {
   if (e) e.preventDefault();
 
@@ -135,82 +184,31 @@ async function handleSaveData(e) {
     if (!response.ok) throw new Error("Save operation failed");
 
     alert(editId ? "Record Updated!" : "New Record Added!");
-    closeModal();
-    await loadDataFromDB();
+    window.closeModal();
+    await window.loadDataFromDB();
   } catch (err) {
     alert("Error: " + err.message);
   }
 }
 
-window.deleteData = async (id) => {
-  if (!confirm("Are you sure you want to delete this record?")) return;
-  try {
-    const resp = await fetch(`${API_BASE_URL}/foreclosures/${id}`, {
-      method: "DELETE",
-      credentials: "include",
-    });
-    if (resp.ok) await loadDataFromDB();
-  } catch (err) {
-    console.error("Delete error:", err);
-  }
-};
-
-window.openEdit = (id) => {
-  editId = id;
-  const item = foreclosureData.find((x) => (x._id || x.id) === id);
-  if (!item) return;
-
-  document.getElementById("modalTitle").textContent = "Edit Record";
-  document.getElementById("progressiveSection").style.display = "block";
-
-  document.getElementById("applicant").value = item.applicantName || "";
-  document.getElementById("branch").value = item.branch || "";
-  document.getElementById("location").value = item.siteLocation || "";
-  document.getElementById("collateral-type").value =
-    item.collateralType || "building";
-  document.getElementById("num-collateral").value =
-    item.numberOfCollaterals || 0;
-  document.getElementById("req-date").value = item.dateOfRequest
-    ? item.dateOfRequest.split("T")[0]
-    : "";
-  document.getElementById("app-date").value = item.dateOfAppointment
-    ? item.dateOfAppointment.split("T")[0]
-    : "";
-  document.getElementById("reported-date").value = item.dateOfReport
-    ? item.dateOfReport.split("T")[0]
-    : "";
-  document.getElementById("engineer").value = item.engineerName || "";
-  document.getElementById("status").value = item.reportStatus || "pending";
-  document.getElementById("remark").value = item.remarks || "";
-
-  document.getElementById("modalOverlay").style.display = "flex";
-};
-
-// --- 6. RENDER ENGINE (Desktop & Mobile) ---
+// --- 5. RENDER ENGINE ---
+// Populates Desktop Table and Mobile Cards
 function render(dataToRender = foreclosureData) {
   const desktopTableBody = document.getElementById("desktop-body");
   const mobileContainer = document.getElementById("mobile-cards-container");
+
   if (desktopTableBody) desktopTableBody.innerHTML = "";
   if (mobileContainer) mobileContainer.innerHTML = "";
-
-  let stats = {
-    total: 0,
-    reported: 0,
-    "in-progress": 0,
-    pending: 0,
-    canceled: 0,
-  };
 
   dataToRender
     .slice()
     .reverse()
     .forEach((item) => {
-      stats.total++;
       const statusRaw = (item.reportStatus || "pending").toLowerCase().trim();
       const s = statusRaw.replace(/\s+/g, "-");
-      if (stats.hasOwnProperty(s)) stats[s]++;
       const id = item._id || item.id;
 
+      // Desktop Row Template
       if (desktopTableBody) {
         desktopTableBody.innerHTML += `
         <tr>
@@ -234,16 +232,20 @@ function render(dataToRender = foreclosureData) {
         </tr>`;
       }
 
+      // Mobile Card Template
       if (mobileContainer) {
         mobileContainer.innerHTML += `
         <div class="card">
           <div class="card-header">
-            <div><h3 class="card-title">${item.applicantName}</h3><div class="card-subtitle">${item.branch} | ${item.siteLocation}</div></div>
+            <div>
+                <h3 class="card-title">${item.applicantName}</h3>
+                <div class="card-subtitle">${item.branch} | ${item.siteLocation}</div>
+            </div>
             <span class="pill ${s}">${s}</span>
           </div>
           <div class="card-meta">
-            <b>Type:</b> ${item.collateralType} (${item.numberOfCollaterals})<br>
-            <b>Requested:</b> ${formatDate(item.dateOfRequest)}
+             <b>Collateral:</b> ${item.collateralType} (${item.numberOfCollaterals})<br>
+             <b>Date Req:</b> ${formatDate(item.dateOfRequest)}
           </div>
           <div class="actions">
             <button class="act-btn e-btn" onclick="openEdit('${id}')">Edit</button>
@@ -252,14 +254,33 @@ function render(dataToRender = foreclosureData) {
         </div>`;
       }
     });
+  updateStatsCounters();
+}
 
+// Updates the top stats boxes
+function updateStatsCounters() {
+  let stats = {
+    total: 0,
+    reported: 0,
+    "in-progress": 0,
+    pending: 0,
+    canceled: 0,
+  };
+  foreclosureData.forEach((item) => {
+    stats.total++;
+    const s = (item.reportStatus || "pending")
+      .toLowerCase()
+      .trim()
+      .replace(/\s+/g, "-");
+    if (stats.hasOwnProperty(s)) stats[s]++;
+  });
   ["total", "reported", "pending", "canceled", "in-progress"].forEach((k) => {
     const el = document.getElementById(`count-${k}`);
     if (el) el.innerText = stats[k];
   });
 }
 
-// --- 7. AMENDED STATUS REPORTS ---
+// --- 6. REPORTS & PDF EXPORT ---
 window.runCustomReport = function (reportTitle) {
   const startVal = document.getElementById("start-date").value;
   const endVal = document.getElementById("end-date").value;
@@ -268,180 +289,163 @@ window.runCustomReport = function (reportTitle) {
   if (!startVal || !endVal) return alert("Please select a valid date range.");
 
   const filtered = foreclosureData.filter((item) => {
-    if (!item.dateOfRequest) return false;
-    const itemDate = item.dateOfRequest.includes("T")
-      ? item.dateOfRequest.split("T")[0]
-      : item.dateOfRequest;
+    const itemDate = item.dateOfRequest?.split("T")[0];
     return itemDate >= startVal && itemDate <= endVal;
   });
 
   const total = filtered.length;
   let counts = { reported: 0, pending: 0, canceled: 0, inProgress: 0 };
-
   filtered.forEach((i) => {
     const s = (i.reportStatus || "").toLowerCase();
-    if (s.includes("reported") || s.includes("complete")) counts.reported++;
+    if (s.includes("reported")) counts.reported++;
     else if (s.includes("cancel")) counts.canceled++;
     else if (s.includes("progress")) counts.inProgress++;
     else counts.pending++;
   });
 
-  const getPct = (c) => (total > 0 ? ((c / total) * 100).toFixed(1) : "0.0");
-
   display.innerHTML = `
     <div class="summary-card">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-          <h2 style="margin:0; font-size: 1.2rem;">${reportTitle}</h2>
-          <button class="act-btn e-btn" style="min-width: 90px; font-size: 9px; height: 26px; padding: 0 8px;" 
-                  onclick="exportToPDF('${reportTitle}', '${startVal}', '${endVal}')">DOWNLOAD PDF</button>
-      </div>
-      <p style="font-size: 0.75rem; color: #64748b; margin-bottom: 12px;">Period: ${formatDate(startVal)} to ${formatDate(endVal)}</p>
-      <hr style="border: 0; border-top: 1px solid #f1f5f9; margin-bottom: 15px;">
-      <div class="summary-line"><b>Total Requests:</b> ${total}</div>
-      <div class="summary-line"><b>Completed:</b> ${counts.reported} (${getPct(counts.reported)}%)</div>
-      <div class="summary-line"><b>In-Progress:</b> ${counts.inProgress} (${getPct(counts.inProgress)}%)</div>
-      <div class="summary-line"><b>Pending:</b> ${counts.pending} (${getPct(counts.pending)}%)</div>
-      <div class="summary-line"><b>Canceled:</b> ${counts.canceled} (${getPct(counts.canceled)}%)</div>
+      <h3 style="margin-bottom:10px">${reportTitle}</h3>
+      <p style="font-size:0.8rem; color:#64748b">Period: ${formatDate(startVal)} to ${formatDate(endVal)}</p>
+      <hr style="margin:15px 0; border:0; border-top:1px solid #eee">
+      <div style="margin-bottom:5px"><b>Total:</b> ${total}</div>
+      <div style="margin-bottom:15px"><b>Completed:</b> ${counts.reported}</div>
+      <button class="btn btn-add" style="width:100%" onclick="exportToPDF('${reportTitle}', '${startVal}', '${endVal}')">DOWNLOAD PDF REPORT</button>
     </div>`;
 };
 
-// --- 8. PDF REPORT CODE ---
 window.exportToPDF = function (title, startDate, endDate) {
   const { jsPDF } = window.jspdf;
-  const doc = new jsPDF("l", "mm", "a4");
+  const doc = new jsPDF("l", "mm", "a4"); // Landscape
 
   const filtered = foreclosureData.filter((item) => {
-    if (!item.dateOfRequest) return false;
-    const d = item.dateOfRequest.includes("T")
-      ? item.dateOfRequest.split("T")[0]
-      : item.dateOfRequest;
+    const d = item.dateOfRequest?.split("T")[0];
     return d >= startDate && d <= endDate;
   });
 
-  doc.setFontSize(18);
-  doc.text(`PED Foreclosure Management - ${title}`, 14, 20);
-  doc.setFontSize(11);
+  doc.setFontSize(16);
+  doc.text(`Foreclosure Management System - ${title}`, 14, 15);
+  doc.setFontSize(10);
   doc.text(
     `Report Period: ${formatDate(startDate)} to ${formatDate(endDate)}`,
     14,
-    28,
+    22,
   );
 
   doc.autoTable({
-    startY: 35,
+    startY: 28,
     head: [
-      [
-        "Applicant Name",
-        "Branch",
-        "Location",
-        "Collateral Type",
-        "Qty",
-        "Req Date",
-        "Report Date",
-        "Status",
-      ],
+      ["Applicant", "Branch", "Location", "Collateral", "Status", "Req Date"],
     ],
-    body: filtered.map((item) => [
-      item.applicantName,
-      item.branch,
-      item.siteLocation,
-      item.collateralType,
-      item.numberOfCollaterals,
-      formatDate(item.dateOfRequest),
-      formatDate(item.dateOfReport),
-      item.reportStatus,
+    body: filtered.map((i) => [
+      i.applicantName,
+      i.branch,
+      i.siteLocation,
+      `${i.collateralType} (${i.numberOfCollaterals})`,
+      i.reportStatus,
+      formatDate(i.dateOfRequest),
     ]),
-    headStyles: { fillColor: [1, 0, 102] },
-    styles: { fontSize: 9 },
+    theme: "grid",
+    headStyles: { fillColor: [37, 99, 235] },
   });
 
   doc.save(`${title}_${startDate}.pdf`);
 };
 
-// --- 9. MODAL & UI UTILITIES ---
+// --- 7. UI CONTROLS & INITIALIZATION ---
 window.closeModal = () => {
   document.getElementById("modalOverlay").style.display = "none";
   editId = null;
 };
 
-function setupFilters() {
-  const searchTxt = document.getElementById("find-txt");
-  const dateFrom = document.getElementById("find-from");
-  const dateTo = document.getElementById("find-to");
-
-  const applyFilters = () => {
-    const term = searchTxt.value.toLowerCase();
-    const from = dateFrom.value;
-    const to = dateTo.value;
-
-    const filtered = foreclosureData.filter((item) => {
-      const matchesSearch =
-        item.applicantName?.toLowerCase().includes(term) ||
-        item.branch?.toLowerCase().includes(term);
-      const itemDate = item.dateOfRequest?.split("T")[0];
-      const matchesDate =
-        (!from || itemDate >= from) && (!to || itemDate <= to);
-      return matchesSearch && matchesDate;
-    });
-    render(filtered);
-  };
-
-  if (searchTxt) searchTxt.addEventListener("input", applyFilters);
-  if (dateFrom) dateFrom.addEventListener("change", applyFilters);
-  if (dateTo) dateTo.addEventListener("change", applyFilters);
-}
-
-// --- 10. EVENT LISTENERS ---
 document.addEventListener("DOMContentLoaded", () => {
-  // Login Logic
-  const loginForm = document.getElementById("login-form");
-  if (loginForm) {
-    loginForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const userVal = document.getElementById("username").value;
-      const passVal = document.getElementById("password").value;
-      await login(userVal, passVal);
+  updateAvatarUI();
+
+  // Mobile Hamburger Menu Logic
+  const menuBtn = document.getElementById("mobile-menu-btn");
+  const navLinks = document.getElementById("nav-links");
+  if (menuBtn && navLinks) {
+    menuBtn.addEventListener("click", () => {
+      navLinks.classList.toggle("active");
     });
   }
 
-  // Dashboard Form Actions
+  // Auth Form Listener
+  const loginForm = document.getElementById("login-form");
+  if (loginForm) {
+    loginForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      login(
+        document.getElementById("username").value,
+        document.getElementById("password").value,
+      );
+    });
+  }
+
+  // Modal Open Logic (Add Mode)
   const addBtn = document.getElementById("openAddModal");
   if (addBtn) {
     addBtn.addEventListener("click", () => {
       editId = null;
       document.getElementById("modalTitle").textContent = "Add New Data";
       document.getElementById("progressiveSection").style.display = "none";
-      const inputs = document.querySelectorAll(
-        ".modal-box input, .modal-box textarea",
-      );
-      inputs.forEach((i) => (i.value = ""));
+      // Clear all inputs
+      document
+        .querySelectorAll(".modal-box input, .modal-box textarea")
+        .forEach((i) => (i.value = ""));
       document.getElementById("status").value = "pending";
       document.getElementById("modalOverlay").style.display = "flex";
     });
   }
 
+  // Save/Cancel Listeners
   const saveBtn = document.getElementById("saveData");
-  if (saveBtn) {
-    saveBtn.addEventListener("click", handleSaveData);
-  }
+  if (saveBtn) saveBtn.addEventListener("click", handleSaveData);
 
   const cancelBtn = document.querySelector(".btn-cancel");
-  if (cancelBtn) {
-    cancelBtn.addEventListener("click", closeModal);
-  }
+  if (cancelBtn) cancelBtn.addEventListener("click", window.closeModal);
 
-  // Mobile Menu Toggle
-  const menuBtn = document.getElementById("mobile-menu-btn");
-  const navLinks = document.getElementById("nav-links");
-  if (menuBtn && navLinks) {
-    menuBtn.addEventListener("click", () =>
-      navLinks.classList.toggle("active"),
-    );
+  // Search & Filter Real-time Logic
+  const searchTxt = document.getElementById("find-txt");
+  const dateFrom = document.getElementById("find-from");
+  const dateTo = document.getElementById("find-to");
+
+  const filterHandler = () => {
+    const term = searchTxt?.value.toLowerCase() || "";
+    const from = dateFrom?.value || "";
+    const to = dateTo?.value || "";
+
+    const filtered = foreclosureData.filter((item) => {
+      const name = item.applicantName?.toLowerCase() || "";
+      const branch = item.branch?.toLowerCase() || "";
+      const matchesSearch = name.includes(term) || branch.includes(term);
+
+      const itemDate = item.dateOfRequest?.split("T")[0];
+      const matchesDate =
+        (!from || itemDate >= from) && (!to || itemDate <= to);
+
+      return matchesSearch && matchesDate;
+    });
+    render(filtered);
+  };
+
+  if (searchTxt) searchTxt.addEventListener("input", filterHandler);
+  if (dateFrom) dateFrom.addEventListener("change", filterHandler);
+  if (dateTo) dateTo.addEventListener("change", filterHandler);
+
+  // Initial Load from DB
+  if (
+    document.getElementById("desktop-body") ||
+    document.getElementById("mobile-cards-container")
+  ) {
+    window.loadDataFromDB();
   }
 });
 
-// Close modal on outside click
+// Close modal when clicking outside the box
 window.onclick = function (event) {
   const modal = document.getElementById("modalOverlay");
-  if (event.target == modal) closeModal();
+  if (event.target == modal) {
+    window.closeModal();
+  }
 };
