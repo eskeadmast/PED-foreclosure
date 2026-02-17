@@ -5,16 +5,16 @@
 
 // --- 1. GATEKEEPER ---
 (function gatekeeper() {
-  const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+  const isLoggedIn = localStorage.getItem("isLoggedIn") === "true";
   const path = window.location.pathname;
-  const page = path.split('/').pop();
+  const page = path.split("/").pop();
   const isAtLogin =
-    page === '' || page === 'index2.html' || page === 'index.html';
+    page === "" || page === "index.html" || page === "index.html";
 
   if (!isLoggedIn && !isAtLogin) {
-    window.location.replace('index2.html');
+    window.location.replace("index.html");
   } else if (isLoggedIn && isAtLogin) {
-    window.location.replace('dashboard.html');
+    window.location.replace("dashboard.html");
   }
 })();
 
@@ -22,12 +22,12 @@ let editId = null;
 let foreclosureData = [];
 
 // --- 2. UTILITY: DATE FORMATTER ---
-const formatDate = dateStr => {
-  if (!dateStr) return '';
+const formatDate = (dateStr) => {
+  if (!dateStr) return "";
   const d = new Date(dateStr);
-  if (isNaN(d.getTime())) return '';
-  const day = String(d.getDate()).padStart(2, '0');
-  const month = String(d.getMonth() + 1).padStart(2, '0');
+  if (isNaN(d.getTime())) return "";
+  const day = String(d.getDate()).padStart(2, "0");
+  const month = String(d.getMonth() + 1).padStart(2, "0");
   const year = d.getFullYear();
   return `${day}-${month}-${year}`;
 };
@@ -37,9 +37,9 @@ window.onload = async () => {
   updateAvatarUI();
   // Check which view we are in to load data
   if (
-    document.getElementById('desktop-body') ||
-    document.getElementById('mobile-cards-container') ||
-    document.getElementById('active-report-display')
+    document.getElementById("desktop-body") ||
+    document.getElementById("mobile-cards-container") ||
+    document.getElementById("active-report-display")
   ) {
     await loadDataFromDB();
   }
@@ -48,33 +48,33 @@ window.onload = async () => {
 // --- 4. AUTHENTICATION ---
 const login = async (username, password) => {
   try {
-    const response = await fetch('http://localhost:3000/api/v1/users/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+    const response = await fetch("http://localhost:3000/api/v1/users/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username, password }),
-      credentials: 'include',
+      credentials: "include",
     });
-    if (!response.ok) throw new Error('Auth Failed');
+    if (!response.ok) throw new Error("Auth Failed");
     const result = await response.json();
 
-    localStorage.setItem('isLoggedIn', 'true');
-    localStorage.setItem('userFullName', result.data?.user?.fullName || 'User');
-    window.location.replace('dashboard.html');
+    localStorage.setItem("isLoggedIn", "true");
+    localStorage.setItem("userFullName", result.data?.user?.fullName || "User");
+    window.location.replace("dashboard.html");
   } catch (error) {
-    alert('Authentication Failed. Please check your credentials.');
+    alert("Authentication Failed. Please check your credentials.");
   }
 };
 
 window.logout = function () {
   localStorage.clear();
-  window.location.replace('index2.html');
+  window.location.replace("index.html");
 };
 
 function updateAvatarUI() {
-  const fullName = localStorage.getItem('userFullName') || 'User';
-  const container = document.getElementById('user-avatar-container');
+  const fullName = localStorage.getItem("userFullName") || "User";
+  const container = document.getElementById("user-avatar-container");
   if (container) {
-    const parts = fullName.trim().split(' ');
+    const parts = fullName.trim().split(" ");
     const initials =
       parts.length > 1
         ? parts[0][0] + parts[parts.length - 1][0]
@@ -86,8 +86,8 @@ function updateAvatarUI() {
 // --- 5. API OPERATIONS ---
 async function loadDataFromDB() {
   try {
-    const response = await fetch('http://localhost:3000/api/v1/foreclosures', {
-      credentials: 'include',
+    const response = await fetch("http://localhost:3000/api/v1/foreclosures", {
+      credentials: "include",
     });
     if (response.status === 401) return logout();
     const result = await response.json();
@@ -96,71 +96,71 @@ async function loadDataFromDB() {
     foreclosureData = result.data?.data || result.data || [];
     render();
   } catch (error) {
-    console.error('Fetch error:', error);
+    console.error("Fetch error:", error);
   }
 }
 
 async function deleteData(id) {
-  if (!confirm('Are you sure you want to delete this record?')) return;
+  if (!confirm("Are you sure you want to delete this record?")) return;
   try {
     const resp = await fetch(
       `http://localhost:3000/api/v1/foreclosures/${id}`,
       {
-        method: 'DELETE',
-        credentials: 'include',
+        method: "DELETE",
+        credentials: "include",
       },
     );
     if (resp.ok) loadDataFromDB();
   } catch (err) {
-    console.error('Delete error:', err);
+    console.error("Delete error:", err);
   }
 }
 
 async function openEdit(id) {
   editId = id;
-  const item = foreclosureData.find(x => (x._id || x.id) === id);
+  const item = foreclosureData.find((x) => (x._id || x.id) === id);
   if (!item) return;
 
-  document.getElementById('modalTitle').textContent = 'Edit Record';
-  document.getElementById('applicant').value = item.applicantName || '';
-  document.getElementById('branch').value = item.branch || '';
-  document.getElementById('location').value = item.siteLocation || '';
-  document.getElementById('collateral-type').value = item.collateralType || '';
-  document.getElementById('num-collateral').value =
+  document.getElementById("modalTitle").textContent = "Edit Record";
+  document.getElementById("applicant").value = item.applicantName || "";
+  document.getElementById("branch").value = item.branch || "";
+  document.getElementById("location").value = item.siteLocation || "";
+  document.getElementById("collateral-type").value = item.collateralType || "";
+  document.getElementById("num-collateral").value =
     item.numberOfCollaterals || 0;
-  document.getElementById('req-date').value = item.dateOfRequest
-    ? item.dateOfRequest.split('T')[0]
-    : '';
+  document.getElementById("req-date").value = item.dateOfRequest
+    ? item.dateOfRequest.split("T")[0]
+    : "";
 
   // Optional field visibility
-  const progSection = document.getElementById('progressiveSection');
-  if (progSection) progSection.style.display = 'block';
+  const progSection = document.getElementById("progressiveSection");
+  if (progSection) progSection.style.display = "block";
 
-  document.getElementById('app-date').value = item.dateOfAppointment
-    ? item.dateOfAppointment.split('T')[0]
-    : '';
-  document.getElementById('reported-date').value = item.dateOfReport
-    ? item.dateOfReport.split('T')[0]
-    : '';
-  document.getElementById('engineer').value = item.engineerName || '';
-  document.getElementById('status').value = item.reportStatus || 'pending';
-  document.getElementById('remark').value = item.remarks || '';
+  document.getElementById("app-date").value = item.dateOfAppointment
+    ? item.dateOfAppointment.split("T")[0]
+    : "";
+  document.getElementById("reported-date").value = item.dateOfReport
+    ? item.dateOfReport.split("T")[0]
+    : "";
+  document.getElementById("engineer").value = item.engineerName || "";
+  document.getElementById("status").value = item.reportStatus || "pending";
+  document.getElementById("remark").value = item.remarks || "";
 
-  document.getElementById('modalOverlay').style.display = 'flex';
+  document.getElementById("modalOverlay").style.display = "flex";
 }
 
 // --- 6. RENDER ENGINE (Desktop & Mobile) ---
 function render() {
-  const desktopTableBody = document.getElementById('desktop-body');
-  const mobileContainer = document.getElementById('mobile-cards-container');
+  const desktopTableBody = document.getElementById("desktop-body");
+  const mobileContainer = document.getElementById("mobile-cards-container");
 
-  if (desktopTableBody) desktopTableBody.innerHTML = '';
-  if (mobileContainer) mobileContainer.innerHTML = '';
+  if (desktopTableBody) desktopTableBody.innerHTML = "";
+  if (mobileContainer) mobileContainer.innerHTML = "";
 
   let stats = {
     total: 0,
     reported: 0,
-    'in-progress': 0,
+    "in-progress": 0,
     pending: 0,
     canceled: 0,
   };
@@ -168,10 +168,10 @@ function render() {
   foreclosureData
     .slice()
     .reverse()
-    .forEach(item => {
+    .forEach((item) => {
       stats.total++;
-      const statusRaw = (item.reportStatus || 'pending').toLowerCase().trim();
-      const s = statusRaw.replace(/\s+/g, '-');
+      const statusRaw = (item.reportStatus || "pending").toLowerCase().trim();
+      const s = statusRaw.replace(/\s+/g, "-");
       if (stats.hasOwnProperty(s)) stats[s]++;
       const id = item._id || item.id;
 
@@ -186,10 +186,10 @@ function render() {
           <td>${item.numberOfCollaterals}</td>
           <td>${formatDate(item.dateOfRequest)}</td>
           <td>${formatDate(item.dateOfAppointment)}</td>
-          <td>${item.engineerName || ''}</td>
+          <td>${item.engineerName || ""}</td>
           <td><span class="pill ${s}">${s}</span></td>
           <td>${formatDate(item.dateOfReport)}</td>
-          <td>${item.remarks || ''}</td>
+          <td>${item.remarks || ""}</td>
           <td>
             <div class="actions">
               <button class="act-btn e-btn" onclick="openEdit('${id}')">Edit</button>
@@ -223,7 +223,7 @@ function render() {
     });
 
   // Update Counters
-  ['total', 'reported', 'pending', 'canceled', 'in-progress'].forEach(k => {
+  ["total", "reported", "pending", "canceled", "in-progress"].forEach((k) => {
     const el = document.getElementById(`count-${k}`);
     if (el) el.innerText = stats[k];
   });
@@ -231,17 +231,17 @@ function render() {
 
 // --- 7. AMENDED STATUS REPORTS (Fixed Totals & Smaller Button) ---
 window.runCustomReport = function (reportTitle) {
-  const startVal = document.getElementById('start-date').value;
-  const endVal = document.getElementById('end-date').value;
-  const display = document.getElementById('active-report-display');
+  const startVal = document.getElementById("start-date").value;
+  const endVal = document.getElementById("end-date").value;
+  const display = document.getElementById("active-report-display");
 
-  if (!startVal || !endVal) return alert('Please select a valid date range.');
+  if (!startVal || !endVal) return alert("Please select a valid date range.");
 
   // Robust filtering for both ISO and plain date strings
-  const filtered = foreclosureData.filter(item => {
+  const filtered = foreclosureData.filter((item) => {
     if (!item.dateOfRequest) return false;
-    const itemDate = item.dateOfRequest.includes('T')
-      ? item.dateOfRequest.split('T')[0]
+    const itemDate = item.dateOfRequest.includes("T")
+      ? item.dateOfRequest.split("T")[0]
       : item.dateOfRequest;
     return itemDate >= startVal && itemDate <= endVal;
   });
@@ -249,15 +249,15 @@ window.runCustomReport = function (reportTitle) {
   const total = filtered.length;
   let counts = { reported: 0, pending: 0, canceled: 0, inProgress: 0 };
 
-  filtered.forEach(i => {
-    const s = (i.reportStatus || '').toLowerCase();
-    if (s.includes('reported') || s.includes('complete')) counts.reported++;
-    else if (s.includes('cancel')) counts.canceled++;
-    else if (s.includes('progress')) counts.inProgress++;
+  filtered.forEach((i) => {
+    const s = (i.reportStatus || "").toLowerCase();
+    if (s.includes("reported") || s.includes("complete")) counts.reported++;
+    else if (s.includes("cancel")) counts.canceled++;
+    else if (s.includes("progress")) counts.inProgress++;
     else counts.pending++;
   });
 
-  const getPct = c => (total > 0 ? ((c / total) * 100).toFixed(1) : '0.0');
+  const getPct = (c) => (total > 0 ? ((c / total) * 100).toFixed(1) : "0.0");
 
   display.innerHTML = `
     <div class="summary-card">
@@ -281,12 +281,12 @@ window.runCustomReport = function (reportTitle) {
 // --- 8. ORIGINAL PDF REPORT CODE ---
 window.exportToPDF = function (title, startDate, endDate) {
   const { jsPDF } = window.jspdf;
-  const doc = new jsPDF('l', 'mm', 'a4');
+  const doc = new jsPDF("l", "mm", "a4");
 
-  const filtered = foreclosureData.filter(item => {
+  const filtered = foreclosureData.filter((item) => {
     if (!item.dateOfRequest) return false;
-    const d = item.dateOfRequest.includes('T')
-      ? item.dateOfRequest.split('T')[0]
+    const d = item.dateOfRequest.includes("T")
+      ? item.dateOfRequest.split("T")[0]
       : item.dateOfRequest;
     return d >= startDate && d <= endDate;
   });
@@ -304,17 +304,17 @@ window.exportToPDF = function (title, startDate, endDate) {
     startY: 35,
     head: [
       [
-        'Applicant Name',
-        'Branch',
-        'Location',
-        'Collateral Type',
-        'Qty',
-        'Req Date',
-        'Report Date',
-        'Status',
+        "Applicant Name",
+        "Branch",
+        "Location",
+        "Collateral Type",
+        "Qty",
+        "Req Date",
+        "Report Date",
+        "Status",
       ],
     ],
-    body: filtered.map(item => [
+    body: filtered.map((item) => [
       item.applicantName,
       item.branch,
       item.siteLocation,
@@ -333,13 +333,13 @@ window.exportToPDF = function (title, startDate, endDate) {
 
 // --- 9. MODAL & UI UTILITIES ---
 window.closeModal = () => {
-  document.getElementById('modalOverlay').style.display = 'none';
+  document.getElementById("modalOverlay").style.display = "none";
   editId = null;
 };
 
 // Handle clicks outside modal to close
 window.onclick = function (event) {
-  const modal = document.getElementById('modalOverlay');
+  const modal = document.getElementById("modalOverlay");
   if (event.target == modal) {
     closeModal();
   }
