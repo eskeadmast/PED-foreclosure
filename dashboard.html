@@ -8,24 +8,25 @@
   </head>
   <body>
     <div class="app-container">
-        <header class="main-header no-print">
-  <div class="nav-container">
-    <div class="logo">
-      <div class="logo-icon"><img src="./logo.jpg" alt="logo" /></div>
-      <span><strong>PED FMS</strong></span>
-    </div>
-    
-    <button class="menu-toggle" id="mobile-menu-btn">
-      <span></span><span></span><span></span>
-    </button>
-    
-    <nav class="nav-links" id="nav-links">
-      <div id="user-avatar-container"></div> <a href="dashboard.html">Dashboard</a>
-      <a href="report.html">Reports</a>
-      <a href="#" onclick="logout()" class="logout-link">Logout</a>
-    </nav>
-  </div>
-</header>
+      <header class="main-header no-print">
+        <div class="nav-container">
+          <div class="logo">
+            <div class="logo-icon"><img src="./logo.jpg" alt="logo" /></div>
+            <span><strong>PED FMS</strong></span>
+          </div>
+          
+          <button id="mobile-menu-btn" class="menu-toggle">
+            <span></span><span></span><span></span>
+          </button>
+
+          <div id="nav-links" class="nav-links">
+            <a href="dashboard.html" class="active">Dashboard</a>
+            <a href="reports.html">Reports</a>
+            <a href="#" onclick="logout()">Logout</a>
+            <div id="user-avatar-container"></div>
+          </div>
+        </div>
+      </header>
       <section class="header-section">
         <div
           style="

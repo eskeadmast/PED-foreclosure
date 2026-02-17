@@ -851,3 +851,40 @@ td {
     display: flex; /* Shown when active class is toggled */
   }
 }
+
+/* AVATAR FIX: This ensures the circle renders */
+.avatar-circle {
+  width: 40px;
+  height: 40px;
+  background-color: var(--white);
+  color: var(--primary);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 14px;
+  border: 2px solid var(--accent);
+  cursor: pointer;
+}
+
+/* MOBILE NAV FIX: Ensuring the links show when 'active' class is added */
+@media (max-width: 768px) {
+  .nav-links {
+    display: none; /* Hide by default */
+    flex-direction: column;
+    position: absolute;
+    top: 64px;
+    right: 0;
+    width: 250px;
+    background: var(--primary);
+    box-shadow: -4px 4px 10px rgba(0, 0, 0, 0.2);
+    padding: 20px;
+    z-index: 1000;
+  }
+
+  /* THIS IS THE CRITICAL LINE */
+  .nav-links.active {
+    display: flex !important;
+  }
+}

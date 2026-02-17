@@ -69,12 +69,12 @@ function updateAvatarUI() {
       parts.length > 1
         ? parts[0][0] + parts[parts.length - 1][0]
         : parts[0].substring(0, 2);
+    // Ensuring it renders as a styled circle via the class avatar-circle
     container.innerHTML = `<div class="avatar-circle" title="${fullName}">${initials.toUpperCase()}</div>`;
   }
 }
 
 // --- 4. API OPERATIONS (CRUD) ---
-// Fetches all data from Render
 window.loadDataFromDB = async () => {
   try {
     const response = await fetch(`${API_BASE_URL}/foreclosures`, {
@@ -82,7 +82,6 @@ window.loadDataFromDB = async () => {
     });
     if (response.status === 401) return logout();
     const result = await response.json();
-    // Normalize data structure from API response
     foreclosureData = result.data?.data || result.data || [];
     render();
   } catch (error) {
@@ -90,7 +89,6 @@ window.loadDataFromDB = async () => {
   }
 };
 
-// Deletes a record by ID
 window.deleteData = async (id) => {
   if (!confirm("Are you sure you want to permanently delete this record?"))
     return;
@@ -101,7 +99,6 @@ window.deleteData = async (id) => {
     });
 
     if (resp.ok) {
-      // Refresh the local data after successful deletion
       await window.loadDataFromDB();
     } else {
       const errData = await resp.json();
@@ -112,17 +109,14 @@ window.deleteData = async (id) => {
   }
 };
 
-// Opens the modal and populates it with existing data for editing
 window.openEdit = (id) => {
   editId = id;
   const item = foreclosureData.find((x) => (x._id || x.id) === id);
   if (!item) return;
 
-  // UI Adjustment
   document.getElementById("modalTitle").textContent = "Edit Record";
   document.getElementById("progressiveSection").style.display = "block";
 
-  // Mapping API data to Form IDs
   document.getElementById("applicant").value = item.applicantName || "";
   document.getElementById("branch").value = item.branch || "";
   document.getElementById("location").value = item.siteLocation || "";
@@ -131,7 +125,6 @@ window.openEdit = (id) => {
   document.getElementById("num-collateral").value =
     item.numberOfCollaterals || 0;
 
-  // Format dates for input[type="date"] (YYYY-MM-DD)
   document.getElementById("req-date").value = item.dateOfRequest
     ? item.dateOfRequest.split("T")[0]
     : "";
@@ -149,7 +142,6 @@ window.openEdit = (id) => {
   document.getElementById("modalOverlay").style.display = "flex";
 };
 
-// Handles both Creating (POST) and Updating (PATCH)
 async function handleSaveData(e) {
   if (e) e.preventDefault();
 
@@ -192,7 +184,6 @@ async function handleSaveData(e) {
 }
 
 // --- 5. RENDER ENGINE ---
-// Populates Desktop Table and Mobile Cards
 function render(dataToRender = foreclosureData) {
   const desktopTableBody = document.getElementById("desktop-body");
   const mobileContainer = document.getElementById("mobile-cards-container");
@@ -208,7 +199,6 @@ function render(dataToRender = foreclosureData) {
       const s = statusRaw.replace(/\s+/g, "-");
       const id = item._id || item.id;
 
-      // Desktop Row Template
       if (desktopTableBody) {
         desktopTableBody.innerHTML += `
         <tr>
@@ -232,7 +222,6 @@ function render(dataToRender = foreclosureData) {
         </tr>`;
       }
 
-      // Mobile Card Template
       if (mobileContainer) {
         mobileContainer.innerHTML += `
         <div class="card">
@@ -257,7 +246,6 @@ function render(dataToRender = foreclosureData) {
   updateStatsCounters();
 }
 
-// Updates the top stats boxes
 function updateStatsCounters() {
   let stats = {
     total: 0,
@@ -316,8 +304,7 @@ window.runCustomReport = function (reportTitle) {
 
 window.exportToPDF = function (title, startDate, endDate) {
   const { jsPDF } = window.jspdf;
-  const doc = new jsPDF("l", "mm", "a4"); // Landscape
-
+  const doc = new jsPDF("l", "mm", "a4");
   const filtered = foreclosureData.filter((item) => {
     const d = item.dateOfRequest?.split("T")[0];
     return d >= startDate && d <= endDate;
@@ -361,26 +348,24 @@ window.closeModal = () => {
 document.addEventListener("DOMContentLoaded", () => {
   updateAvatarUI();
 
-  // --- HAMBURGER MENU CODE ---
   const menuBtn = document.getElementById("mobile-menu-btn");
   const navLinks = document.getElementById("nav-links");
 
   if (menuBtn && navLinks) {
     menuBtn.addEventListener("click", (e) => {
-      e.stopPropagation(); // Prevents click from bubbling to document
+      e.stopPropagation();
       navLinks.classList.toggle("active");
+      menuBtn.classList.toggle("active"); // Fix for X-animation
     });
 
-    // Close menu when clicking anywhere else on the document
     document.addEventListener("click", (e) => {
       if (!navLinks.contains(e.target) && e.target !== menuBtn) {
         navLinks.classList.remove("active");
+        menuBtn.classList.remove("active");
       }
     });
   }
-  // --- END HAMBURGER MENU CODE ---
 
-  // Auth Form Listener
   const loginForm = document.getElementById("login-form");
   if (loginForm) {
     loginForm.addEventListener("submit", (e) => {
@@ -392,14 +377,12 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // Modal Open Logic (Add Mode)
   const addBtn = document.getElementById("openAddModal");
   if (addBtn) {
     addBtn.addEventListener("click", () => {
       editId = null;
       document.getElementById("modalTitle").textContent = "Add New Data";
       document.getElementById("progressiveSection").style.display = "none";
-      // Clear all inputs
       document
         .querySelectorAll(".modal-box input, .modal-box textarea")
         .forEach((i) => (i.value = ""));
@@ -408,14 +391,9 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // Save/Cancel Listeners
   const saveBtn = document.getElementById("saveData");
   if (saveBtn) saveBtn.addEventListener("click", handleSaveData);
 
-  const cancelBtn = document.querySelector(".btn-cancel");
-  if (cancelBtn) cancelBtn.addEventListener("click", window.closeModal);
-
-  // Search & Filter Real-time Logic
   const searchTxt = document.getElementById("find-txt");
   const dateFrom = document.getElementById("find-from");
   const dateTo = document.getElementById("find-to");
@@ -429,11 +407,9 @@ document.addEventListener("DOMContentLoaded", () => {
       const name = item.applicantName?.toLowerCase() || "";
       const branch = item.branch?.toLowerCase() || "";
       const matchesSearch = name.includes(term) || branch.includes(term);
-
       const itemDate = item.dateOfRequest?.split("T")[0];
       const matchesDate =
         (!from || itemDate >= from) && (!to || itemDate <= to);
-
       return matchesSearch && matchesDate;
     });
     render(filtered);
@@ -443,7 +419,6 @@ document.addEventListener("DOMContentLoaded", () => {
   if (dateFrom) dateFrom.addEventListener("change", filterHandler);
   if (dateTo) dateTo.addEventListener("change", filterHandler);
 
-  // Initial Load from DB
   if (
     document.getElementById("desktop-body") ||
     document.getElementById("mobile-cards-container")
@@ -452,10 +427,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 });
 
-// Close modal when clicking outside the box
 window.onclick = function (event) {
   const modal = document.getElementById("modalOverlay");
-  if (event.target == modal) {
-    window.closeModal();
-  }
+  if (event.target == modal) window.closeModal();
 };
