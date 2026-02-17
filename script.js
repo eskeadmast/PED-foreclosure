@@ -48,12 +48,15 @@ window.onload = async () => {
 // --- 4. AUTHENTICATION ---
 const login = async (username, password) => {
   try {
-    const response = await fetch("http://localhost:3000/api/v1/users/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, password }),
-      credentials: "include",
-    });
+    const response = await fetch(
+      "https://ped-foreclosure-back.onrender.com/api/v1/users/login",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password }),
+        credentials: "include",
+      },
+    );
     if (!response.ok) throw new Error("Auth Failed");
     const result = await response.json();
 
@@ -86,9 +89,12 @@ function updateAvatarUI() {
 // --- 5. API OPERATIONS ---
 async function loadDataFromDB() {
   try {
-    const response = await fetch("http://localhost:3000/api/v1/foreclosures", {
-      credentials: "include",
-    });
+    const response = await fetch(
+      "https://ped-foreclosure-back.onrender.com/api/v1/foreclosures",
+      {
+        credentials: "include",
+      },
+    );
     if (response.status === 401) return logout();
     const result = await response.json();
 
@@ -104,7 +110,7 @@ async function deleteData(id) {
   if (!confirm("Are you sure you want to delete this record?")) return;
   try {
     const resp = await fetch(
-      `http://localhost:3000/api/v1/foreclosures/${id}`,
+      `https://ped-foreclosure-back.onrender.com/api/v1/foreclosures/${id}`,
       {
         method: "DELETE",
         credentials: "include",
