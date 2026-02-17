@@ -7,9 +7,9 @@
 (function gatekeeper() {
   const isLoggedIn = localStorage.getItem("isLoggedIn") === "true";
   const path = window.location.pathname;
-  const page = path.split("/").pop();
+  // This check is safer for both localhost and deployed URLs
   const isAtLogin =
-    page === "" || page === "index.html" || page === "index.html";
+    path.endsWith("index.html") || path === "/" || path.endsWith("/");
 
   if (!isLoggedIn && !isAtLogin) {
     window.location.replace("index.html");
@@ -350,3 +350,18 @@ window.onclick = function (event) {
     closeModal();
   }
 };
+// --- 10. EVENT LISTENERS ---
+document.addEventListener("DOMContentLoaded", () => {
+  const loginForm = document.getElementById("login-form");
+  if (loginForm) {
+    loginForm.addEventListener("submit", async (e) => {
+      e.preventDefault(); // This stops the page from refreshing (the "glitch")
+
+      const userVal = document.getElementById("username").value;
+      const passVal = document.getElementById("password").value;
+
+      // Call your existing login function
+      await login(userVal, passVal);
+    });
+  }
+});
