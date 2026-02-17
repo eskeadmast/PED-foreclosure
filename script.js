@@ -91,18 +91,59 @@ async function loadDataFromDB() {
   try {
     const response = await fetch(
       "https://ped-foreclosure-back.onrender.com/api/v1/foreclosures",
-      {
-        credentials: "include",
-      },
+      { credentials: "include" },
     );
     if (response.status === 401) return logout();
     const result = await response.json();
-
-    // Support different API response structures
     foreclosureData = result.data?.data || result.data || [];
     render();
   } catch (error) {
     console.error("Fetch error:", error);
+  }
+}
+
+// NEW: Function to Add or Update Data
+async function saveData(e) {
+  if (e) e.preventDefault();
+
+  const payload = {
+    applicantName: document.getElementById("applicant").value,
+    branch: document.getElementById("branch").value,
+    siteLocation: document.getElementById("location").value,
+    collateralType: document.getElementById("collateral-type").value,
+    numberOfCollaterals: parseInt(
+      document.getElementById("num-collateral").value,
+    ),
+    dateOfRequest: document.getElementById("req-date").value,
+    dateOfAppointment: document.getElementById("app-date").value,
+    dateOfReport: document.getElementById("reported-date").value,
+    engineerName: document.getElementById("engineer").value,
+    reportStatus: document.getElementById("status").value,
+    remarks: document.getElementById("remark").value,
+  };
+
+  const url = editId
+    ? `https://ped-foreclosure-back.onrender.com/api/v1/foreclosures/${editId}`
+    : `https://ped-foreclosure-back.onrender.com/api/v1/foreclosures`;
+
+  const method = editId ? "PATCH" : "POST";
+
+  try {
+    const response = await fetch(url, {
+      method: method,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      credentials: "include",
+    });
+
+    if (!response.ok) throw new Error("Save failed");
+
+    alert(editId ? "Record Updated!" : "Record Added!");
+    closeModal();
+    await loadDataFromDB(); // Refresh the list
+  } catch (err) {
+    alert("Error saving data. Check console.");
+    console.error(err);
   }
 }
 
@@ -116,7 +157,11 @@ async function deleteData(id) {
         credentials: "include",
       },
     );
-    if (resp.ok) loadDataFromDB();
+    if (resp.ok) {
+      await loadDataFromDB();
+    } else {
+      alert("Delete failed. You might not have permission.");
+    }
   } catch (err) {
     console.error("Delete error:", err);
   }
@@ -338,30 +383,40 @@ window.exportToPDF = function (title, startDate, endDate) {
 };
 
 // --- 9. MODAL & UI UTILITIES ---
+window.openAddModal = () => {
+  editId = null; // Important: Clear ID so the system knows this is NEW data
+  document.getElementById("modalTitle").textContent = "Add New Record";
+  document.getElementById("foreclosure-form").reset(); // Clear previous inputs
+  document.getElementById("modalOverlay").style.display = "flex";
+};
+
 window.closeModal = () => {
   document.getElementById("modalOverlay").style.display = "none";
   editId = null;
 };
 
-// Handle clicks outside modal to close
-window.onclick = function (event) {
-  const modal = document.getElementById("modalOverlay");
-  if (event.target == modal) {
-    closeModal();
-  }
-};
 // --- 10. EVENT LISTENERS ---
 document.addEventListener("DOMContentLoaded", () => {
+  // Login Form
   const loginForm = document.getElementById("login-form");
   if (loginForm) {
     loginForm.addEventListener("submit", async (e) => {
-      e.preventDefault(); // This stops the page from refreshing (the "glitch")
-
+      e.preventDefault();
       const userVal = document.getElementById("username").value;
       const passVal = document.getElementById("password").value;
-
-      // Call your existing login function
       await login(userVal, passVal);
     });
+  }
+
+  // Foreclosure Form (The Modal)
+  const dataForm = document.getElementById("foreclosure-form");
+  if (dataForm) {
+    dataForm.addEventListener("submit", saveData);
+  }
+
+  // Add New Button
+  const addBtn = document.getElementById("add-new-btn");
+  if (addBtn) {
+    addBtn.addEventListener("click", openAddModal);
   }
 });
