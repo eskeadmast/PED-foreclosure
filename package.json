@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "description": "",
   "scripts": {
-    "start": "parcel index2.html dashboard.html --open",
-    "build": "parcel build index2.html dashboard.html"
+    "start": "parcel index.html dashboard.html --open",
+    "build": "parcel build index.html dashboard.html"
   },
   "keywords": [],
   "author": "",
