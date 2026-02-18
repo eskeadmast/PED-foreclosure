@@ -254,39 +254,7 @@ function updateStatsCounters() {
   });
 }
 
-// --- 5. REPORTS & PDF EXPORT
-// --- FILTER FUNCTION (MM/DD/YYYY INPUT) ---
-function filterDataByRequestDate(startInput, endInput) {
-  if (!startInput || !endInput) return [];
-
-  // Parse ISO dates from the form as UTC
-  const parseISOAsUTC = (dateStr) => {
-    const d = new Date(dateStr + "T00:00:00Z"); // ensure UTC midnight
-    return isNaN(d.getTime()) ? null : d;
-  };
-
-  const startDate = parseISOAsUTC(startInput);
-  const endDate = parseISOAsUTC(endInput);
-  if (!startDate || !endDate) {
-    console.error("Invalid start or end date from form:", startInput, endInput);
-    return [];
-  }
-
-  endDate.setUTCHours(23, 59, 59, 999); // end of day UTC
-
-  console.log("Filtering between:", startDate, endDate);
-
-  const filtered = foreclosureData.filter((item) => {
-    if (!item.dateOfRequest) return false;
-    const itemDate = new Date(item.dateOfRequest); // UTC from DB
-    return itemDate >= startDate && itemDate <= endDate;
-  });
-
-  console.log("Filtered records:", filtered.length, filtered);
-  return filtered;
-}
-
-// --- RUN CUSTOM REPORT ---
+// --- 5. DETAILED REPORTS & PDF EXPORT (UTC-SAFE) ---
 window.runCustomReport = function (reportTitle) {
   const startVal = document.getElementById("start-date").value;
   const endVal = document.getElementById("end-date").value;
@@ -294,14 +262,26 @@ window.runCustomReport = function (reportTitle) {
 
   if (!startVal || !endVal) return alert("Please select a valid date range.");
 
-  // Use the new filter function
-  const filtered = filterDataByRequestDate(startVal, endVal);
+  // Convert input to UTC timestamps
+  const startDate = new Date(startVal + "T00:00:00Z").getTime();
+  const endDate = new Date(endVal + "T23:59:59Z").getTime();
+
+  console.log("Filtering between:", new Date(startDate), new Date(endDate));
+
+  const filtered = foreclosureData.filter((item) => {
+    if (!item.dateOfRequest) return false;
+    const itemDate = new Date(item.dateOfRequest).getTime(); // UTC timestamp
+    return itemDate >= startDate && itemDate <= endDate;
+  });
+
+  console.log("Filtered records:", filtered.length, filtered);
+
   const total = filtered.length;
 
   if (total === 0) {
     display.innerHTML = `<div class="summary-card" style="border-left: 6px solid #f59e0b;">
       <h3>No Records Found</h3>
-      <p>Checked ${foreclosureData.length} records, none matched ${startVal} to ${endVal}.</p>
+      <p>Checked ${foreclosureData.length} records, none matched ${formatDate(startVal)} to ${formatDate(endVal)}.</p>
     </div>`;
     return;
   }
@@ -319,12 +299,12 @@ window.runCustomReport = function (reportTitle) {
     else counts.pending++;
   });
 
-  const getPct = (c) => (total > 0 ? ((c / total) * 100).toFixed(1) : "0.0");
+  const getPct = (c) => ((c / total) * 100).toFixed(1);
 
   display.innerHTML = `
     <div class="summary-card">
       <h2 style="color:var(--primary); margin-bottom:5px;">${reportTitle}</h2>
-      <p style="color:#64748b; margin-bottom:20px;">Range: ${startVal} to ${endVal}</p>
+      <p style="color:#64748b; margin-bottom:20px;">Range: ${formatDate(startVal)} to ${formatDate(endVal)}</p>
       <div style="background:#f1f5f9; padding:20px; border-radius:12px; text-align:center; margin-bottom:25px;">
         <div style="font-size:0.8rem; text-transform:uppercase; color:#64748b;">Total Requests in Period</div>
         <div style="font-size:2.5rem; font-weight:bold; color:var(--primary);">${total}</div>
@@ -340,12 +320,20 @@ window.runCustomReport = function (reportTitle) {
     </div>`;
 };
 
-// --- EXPORT TO PDF ---
+// --- PDF Export (UTC-safe) ---
 window.exportToPDF = function (title, startDate, endDate) {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF("l", "mm", "a4");
 
-  const filtered = filterDataByRequestDate(startDate, endDate);
+  const start = new Date(startDate + "T00:00:00Z").getTime();
+  const end = new Date(endDate + "T23:59:59Z").getTime();
+
+  const filtered = foreclosureData.filter((item) => {
+    if (!item.dateOfRequest) return false;
+    const itemDate = new Date(item.dateOfRequest).getTime();
+    return itemDate >= start && itemDate <= end;
+  });
+
   if (filtered.length === 0) {
     alert("No records found for the selected date range.");
     return;
