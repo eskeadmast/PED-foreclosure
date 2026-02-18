@@ -269,22 +269,48 @@ function updateStatsCounters() {
 }
 
 // --- 6. REPORTS & PDF EXPORT (FULL CALCULATIONS) ---
+// --- 6. REPORTS & PDF EXPORT (RESTORED CALCULATIONS) ---
+
+/**
+ * Generates a summary report based on a selected date range.
+ * Includes total requests, status counts, and percentages.
+ */
 window.runCustomReport = function (reportTitle) {
   const startVal = document.getElementById("start-date").value;
   const endVal = document.getElementById("end-date").value;
   const display = document.getElementById("active-report-display");
 
-  if (!startVal || !endVal) return alert("Please select a valid date range.");
+  // Validate Input
+  if (!startVal || !endVal) {
+    return alert("Please select both a start and end date.");
+  }
 
-  // Filter data based on selected date range
+  // Convert inputs to date objects for robust comparison
+  const startDate = new Date(startVal);
+  startDate.setHours(0, 0, 0, 0);
+  const endDate = new Date(endVal);
+  endDate.setHours(23, 59, 59, 999);
+
+  // 1. Filter Data
   const filtered = foreclosureData.filter((item) => {
-    const itemDate = item.dateOfRequest?.split("T")[0];
-    return itemDate >= startVal && itemDate <= endVal;
+    if (!item.dateOfRequest) return false;
+    const itemDate = new Date(item.dateOfRequest);
+    return itemDate >= startDate && itemDate <= endDate;
   });
 
   const total = filtered.length;
 
-  // 1. Calculate Counts
+  // Handle Empty State
+  if (total === 0) {
+    display.innerHTML = `
+      <div class="summary-card" style="border-left: 8px solid #dc2626;">
+        <h3 style="color:#dc2626;">No Records Found</h3>
+        <p>There is no data available for the period: <b>${formatDate(startVal)}</b> to <b>${formatDate(endVal)}</b>.</p>
+      </div>`;
+    return;
+  }
+
+  // 2. Calculate Counts for each Status
   let counts = {
     reported: 0,
     pending: 0,
@@ -297,82 +323,68 @@ window.runCustomReport = function (reportTitle) {
       .toLowerCase()
       .trim()
       .replace(/\s+/g, "-");
-    if (counts.hasOwnProperty(s)) {
-      counts[s]++;
-    } else if (s.includes("reported")) {
-      counts.reported++;
-    } else if (s.includes("progress")) {
-      counts["in-progress"]++;
-    } else if (s.includes("cancel")) {
-      counts.canceled++;
-    } else {
-      counts.pending++;
-    }
+
+    // Mapping various string possibilities to keys
+    if (s.includes("reported") || s === "completed") counts.reported++;
+    else if (s.includes("progress")) counts["in-progress"]++;
+    else if (s.includes("cancel")) counts.canceled++;
+    else counts.pending++;
   });
 
-  // 2. Calculate Percentages
-  const getPct = (count) =>
-    total > 0 ? ((count / total) * 100).toFixed(1) : 0;
+  // 3. Percentage Calculation Utility
+  const getPct = (count) => ((count / total) * 100).toFixed(1);
 
-  const stats = [
-    {
-      label: "Completed (Reported)",
-      count: counts.reported,
-      pct: getPct(counts.reported),
-      color: "#16a34a",
-    },
-    {
-      label: "In Progress",
-      count: counts["in-progress"],
-      pct: getPct(counts["in-progress"]),
-      color: "#ca8a04",
-    },
-    {
-      label: "Pending",
-      count: counts.pending,
-      pct: getPct(counts.pending),
-      color: "#2563eb",
-    },
-    {
-      label: "Canceled",
-      count: counts.canceled,
-      pct: getPct(counts.canceled),
-      color: "#dc2626",
-    },
-  ];
-
-  // 3. Render the Summary Card with Percentages
-  let statsHTML = stats
-    .map(
-      (s) => `
-    <div class="summary-line" style="display:flex; justify-content:space-between; margin-bottom:8px;">
-      <span><b style="color:${s.color}">${s.label}:</b> ${s.count}</span>
-      <span style="color:#64748b; font-weight:bold;">${s.pct}%</span>
-    </div>
-  `,
-    )
-    .join("");
-
+  // 4. Render Summary Display
   display.innerHTML = `
-    <div class="summary-card">
-      <h3 style="margin-top:0; color:#020066;">${reportTitle}</h3>
-      <p style="font-size:0.85rem; color:#64748b;">Period: ${formatDate(startVal)} to ${formatDate(endVal)}</p>
-      <hr style="border:0; border-top:1px solid #eee; margin:15px 0;">
-      
-      <div style="font-size:1.1rem; margin-bottom:15px;">
-        <b>Total Requests Found:</b> ${total}
-      </div>
-      
-      <div class="stats-breakdown">
-        ${statsHTML}
+    <div class="summary-card" id="report-printable-area">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h2 style="margin:0; color:var(--primary);">${reportTitle}</h2>
+        <span style="font-size: 0.8rem; background: var(--slate-100); padding: 5px 10px; border-radius: 4px;">
+          Period: ${formatDate(startVal)} — ${formatDate(endVal)}
+        </span>
       </div>
 
-      <button class="btn btn-add" style="margin-top:20px; width:100%;" 
-        onclick="exportToPDF('${reportTitle}', '${startVal}', '${endVal}')">
-        DOWNLOAD PDF REPORT
-      </button>
-    </div>`;
+      <div style="background: var(--slate-100); padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+        <div style="font-size: 1.2rem; font-weight: 800; color: var(--primary);">
+          Total Requests: ${total}
+        </div>
+      </div>
+
+      <div class="report-stats-grid" style="display: grid; gap: 10px;">
+        ${renderStatLine("Completed (Reported)", counts.reported, getPct(counts.reported), "#16a34a")}
+        ${renderStatLine("In Progress", counts["in-progress"], getPct(counts["in-progress"]), "#ca8a04")}
+        ${renderStatLine("Pending", counts.pending, getPct(counts.pending), "#2563eb")}
+        ${renderStatLine("Canceled", counts.canceled, getPct(counts.canceled), "#dc2626")}
+      </div>
+
+      <div style="margin-top: 25px; display: flex; gap: 10px;" class="no-print">
+         <button class="btn btn-add" style="flex: 1;" onclick="exportToPDF('${reportTitle}', '${startVal}', '${endVal}')">
+           DOWNLOAD PDF
+         </button>
+         <button class="btn btn-util" style="flex: 1;" onclick="window.print()">
+           PRINT VIEW
+         </button>
+      </div>
+    </div>
+  `;
 };
+
+/**
+ * Helper to render individual stat lines with progress-bar look
+ */
+function renderStatLine(label, count, percent, color) {
+  return `
+    <div style="margin-bottom: 12px;">
+      <div style="display: flex; justify-content: space-between; font-size: 0.9rem; margin-bottom: 4px;">
+        <span><b>${label}:</b> ${count}</span>
+        <span style="font-weight: bold;">${percent}%</span>
+      </div>
+      <div style="width: 100%; background: #e2e8f0; height: 8px; border-radius: 4px; overflow: hidden;">
+        <div style="width: ${percent}%; background: ${color}; height: 100%;"></div>
+      </div>
+    </div>
+  `;
+}
 
 window.exportToPDF = function (title, startDate, endDate) {
   const { jsPDF } = window.jspdf;
