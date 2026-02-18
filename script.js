@@ -254,38 +254,35 @@ function updateStatsCounters() {
   });
 }
 
-// --- 5. REPORTS & PDF EXPORT (UTC-SAFE) ---
-// Parse form date (MM/DD/YYYY or YYYY-MM-DD) to UTC timestamp
-function parseFormDateToUTC(dateStr) {
-  if (!dateStr) return null;
-  let m, d, y;
-  if (dateStr.includes("/"))
-    [m, d, y] = dateStr.split("/").map(Number); // MM/DD/YYYY
-  else if (dateStr.includes("-"))
-    [y, m, d] = dateStr.split("-").map(Number); // YYYY-MM-DD
-  else return null;
-  return Date.UTC(y, m - 1, d);
-}
-
-// Run custom report
+// --- 5. REPORTS & PDF EXPORT
 window.runCustomReport = function (reportTitle) {
-  const startVal = document.getElementById("start-date").value;
-  const endVal = document.getElementById("end-date").value;
+  const startVal = document.getElementById("start-date").value; // MM/DD/YYYY
+  const endVal = document.getElementById("end-date").value; // MM/DD/YYYY
   const display = document.getElementById("active-report-display");
+
   if (!startVal || !endVal) return alert("Please select a valid date range.");
 
-  const startTS = parseFormDateToUTC(startVal);
-  const endTS = parseFormDateToUTC(endVal) + 86399999; // inclusive end of day
+  // --- Parse MM/DD/YYYY to UTC ---
+  const parseDate = (str) => {
+    const [m, d, y] = str.split("/").map(Number);
+    return new Date(Date.UTC(y, m - 1, d));
+  };
 
+  const startDate = parseDate(startVal);
+  const endDate = parseDate(endVal);
+  endDate.setUTCHours(23, 59, 59, 999); // End of day in UTC
+
+  // --- Filter records by dateOfRequest ---
   const filtered = foreclosureData.filter((item) => {
     if (!item.dateOfRequest) return false;
-    const itemTS = new Date(item.dateOfRequest).getTime();
-    return itemTS >= startTS && itemTS <= endTS;
+    const itemDate = new Date(item.dateOfRequest);
+    return itemDate >= startDate && itemDate <= endDate;
   });
 
   console.log("Filtered records:", filtered.length, filtered);
 
   const total = filtered.length;
+
   if (total === 0) {
     display.innerHTML = `<div class="summary-card" style="border-left: 6px solid #f59e0b;">
       <h3>No Records Found</h3>
@@ -294,6 +291,7 @@ window.runCustomReport = function (reportTitle) {
     return;
   }
 
+  // Count statuses
   let counts = { reported: 0, pending: 0, canceled: 0, "in-progress": 0 };
   filtered.forEach((item) => {
     let s = (item.reportStatus || "pending")
@@ -306,8 +304,9 @@ window.runCustomReport = function (reportTitle) {
     else counts.pending++;
   });
 
-  const getPct = (c) => ((c / total) * 100).toFixed(1);
+  const getPct = (c) => (total > 0 ? ((c / total) * 100).toFixed(1) : "0.0");
 
+  // --- Render Summary Card ---
   display.innerHTML = `
     <div class="summary-card">
       <h2 style="color:var(--primary); margin-bottom:5px;">${reportTitle}</h2>
