@@ -268,7 +268,7 @@ function updateStatsCounters() {
   });
 }
 
-// --- 6. REPORTS & PDF EXPORT ---
+// --- 6. REPORTS & PDF EXPORT (FULL CALCULATIONS) ---
 window.runCustomReport = function (reportTitle) {
   const startVal = document.getElementById("start-date").value;
   const endVal = document.getElementById("end-date").value;
@@ -276,29 +276,101 @@ window.runCustomReport = function (reportTitle) {
 
   if (!startVal || !endVal) return alert("Please select a valid date range.");
 
+  // Filter data based on selected date range
   const filtered = foreclosureData.filter((item) => {
     const itemDate = item.dateOfRequest?.split("T")[0];
     return itemDate >= startVal && itemDate <= endVal;
   });
 
   const total = filtered.length;
-  let counts = { reported: 0, pending: 0, canceled: 0, inProgress: 0 };
+
+  // 1. Calculate Counts
+  let counts = {
+    reported: 0,
+    pending: 0,
+    canceled: 0,
+    "in-progress": 0,
+  };
+
   filtered.forEach((i) => {
-    const s = (i.reportStatus || "").toLowerCase();
-    if (s.includes("reported")) counts.reported++;
-    else if (s.includes("cancel")) counts.canceled++;
-    else if (s.includes("progress")) counts.inProgress++;
-    else counts.pending++;
+    const s = (i.reportStatus || "pending")
+      .toLowerCase()
+      .trim()
+      .replace(/\s+/g, "-");
+    if (counts.hasOwnProperty(s)) {
+      counts[s]++;
+    } else if (s.includes("reported")) {
+      counts.reported++;
+    } else if (s.includes("progress")) {
+      counts["in-progress"]++;
+    } else if (s.includes("cancel")) {
+      counts.canceled++;
+    } else {
+      counts.pending++;
+    }
   });
+
+  // 2. Calculate Percentages
+  const getPct = (count) =>
+    total > 0 ? ((count / total) * 100).toFixed(1) : 0;
+
+  const stats = [
+    {
+      label: "Completed (Reported)",
+      count: counts.reported,
+      pct: getPct(counts.reported),
+      color: "#16a34a",
+    },
+    {
+      label: "In Progress",
+      count: counts["in-progress"],
+      pct: getPct(counts["in-progress"]),
+      color: "#ca8a04",
+    },
+    {
+      label: "Pending",
+      count: counts.pending,
+      pct: getPct(counts.pending),
+      color: "#2563eb",
+    },
+    {
+      label: "Canceled",
+      count: counts.canceled,
+      pct: getPct(counts.canceled),
+      color: "#dc2626",
+    },
+  ];
+
+  // 3. Render the Summary Card with Percentages
+  let statsHTML = stats
+    .map(
+      (s) => `
+    <div class="summary-line" style="display:flex; justify-content:space-between; margin-bottom:8px;">
+      <span><b style="color:${s.color}">${s.label}:</b> ${s.count}</span>
+      <span style="color:#64748b; font-weight:bold;">${s.pct}%</span>
+    </div>
+  `,
+    )
+    .join("");
 
   display.innerHTML = `
     <div class="summary-card">
-      <h3 style="margin-bottom:10px">${reportTitle}</h3>
-      <p style="font-size:0.8rem; color:#64748b">Period: ${formatDate(startVal)} to ${formatDate(endVal)}</p>
-      <hr style="margin:15px 0; border:0; border-top:1px solid #eee">
-      <div style="margin-bottom:5px"><b>Total:</b> ${total}</div>
-      <div style="margin-bottom:15px"><b>Completed:</b> ${counts.reported}</div>
-      <button class="btn btn-add" style="width:100%" onclick="exportToPDF('${reportTitle}', '${startVal}', '${endVal}')">DOWNLOAD PDF REPORT</button>
+      <h3 style="margin-top:0; color:#020066;">${reportTitle}</h3>
+      <p style="font-size:0.85rem; color:#64748b;">Period: ${formatDate(startVal)} to ${formatDate(endVal)}</p>
+      <hr style="border:0; border-top:1px solid #eee; margin:15px 0;">
+      
+      <div style="font-size:1.1rem; margin-bottom:15px;">
+        <b>Total Requests Found:</b> ${total}
+      </div>
+      
+      <div class="stats-breakdown">
+        ${statsHTML}
+      </div>
+
+      <button class="btn btn-add" style="margin-top:20px; width:100%;" 
+        onclick="exportToPDF('${reportTitle}', '${startVal}', '${endVal}')">
+        DOWNLOAD PDF REPORT
+      </button>
     </div>`;
 };
 
