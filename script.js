@@ -84,14 +84,16 @@ window.loadDataFromDB = async () => {
     const response = await fetch(`${API_BASE_URL}/foreclosures`, {
       credentials: "include",
     });
-    if (response.status === 401) return logout();
-
     const result = await response.json();
-    foreclosureData = result.data?.data || result.data || [];
-    console.log("Loaded foreclosureData:", foreclosureData);
-    render();
+
+    // THE FIX: Assign result to the GLOBAL variable used by runCustomReport
+    // Depending on your API structure, it might be result.data or result.data.data
+    foreclosureData = result.data?.data || result.data || result;
+
+    console.log("Global Data Loaded:", foreclosureData.length); // Should log 3
+    render(); // Your function to draw the table/dashboard
   } catch (error) {
-    console.error("Fetch error:", error);
+    console.error("Data Load Error:", error);
   }
 };
 
@@ -265,21 +267,29 @@ function parseFormDateToUTC(dateStr, endOfDay = false) {
   return Date.UTC(y, m - 1, d, 0, 0, 0, 0); // Start of day UTC
 }
 
-// --- Run Custom Report (UTC-SAFE) ---
-// --- Run Custom Report (AMENDED WITH FULL STATS) ---
+// --- Run Custom Report (AMENDED) ---
 window.runCustomReport = function (reportTitle) {
+  // CRITICAL SYNC CHECK: If variable is empty, the report will always fail
+  if (!foreclosureData || foreclosureData.length === 0) {
+    console.error("Report Error: foreclosureData array is empty.");
+    display.innerHTML = `<div class="summary-card" style="border-left: 6px solid #dc2626;">
+      <h3>System Error: Data Not Loaded</h3>
+      <p>The report cannot run because the data hasn't been synced from the server.</p>
+      <button class="btn btn-util" onclick="location.reload()">Reload Page</button>
+    </div>`;
+    return;
+  }
+
   const startVal = document.getElementById("start-date").value;
   const endVal = document.getElementById("end-date").value;
   const display = document.getElementById("active-report-display");
 
   if (!startVal || !endVal) return alert("Please select a valid date range.");
 
-  // Using your UTC-safe parser
   const startUTC = parseFormDateToUTC(startVal);
   const endUTC = parseFormDateToUTC(endVal, true);
 
-  console.log("Filtering between:", new Date(startUTC), new Date(endUTC));
-
+  // Filter against your global variable
   const filtered = foreclosureData.filter((item) => {
     if (!item.dateOfRequest) return false;
     const itemUTC = new Date(item.dateOfRequest).getTime();
@@ -288,54 +298,44 @@ window.runCustomReport = function (reportTitle) {
 
   const total = filtered.length;
 
-  // Handle Empty State
   if (total === 0) {
-    display.innerHTML = `
-      <div class="summary-card" style="border-left: 6px solid #f59e0b;">
-        <h3>No Records Found</h3>
-        <p>Checked ${foreclosureData.length} records, none matched ${formatDate(startVal)} to ${formatDate(endVal)}.</p>
-      </div>`;
+    display.innerHTML = `<div class="summary-card" style="border-left: 6px solid #f59e0b;">
+      <h3>No Records Found</h3>
+      <p>Checked <b>${foreclosureData.length}</b> total system records. None fell between ${formatDate(startVal)} and ${formatDate(endVal)}.</p>
+    </div>`;
     return;
   }
 
-  // --- 1. CALCULATE STATUS COUNTS ---
+  // --- STATS CALCULATIONS ---
   let counts = { reported: 0, pending: 0, canceled: 0, "in-progress": 0 };
-
   filtered.forEach((item) => {
     let s = (item.reportStatus || "pending")
       .toLowerCase()
       .trim()
       .replace(/\s+/g, "-");
-
-    if (s.includes("reported") || s === "completed") counts.reported++;
+    if (s.includes("reported")) counts.reported++;
     else if (s.includes("progress")) counts["in-progress"]++;
     else if (s.includes("cancel")) counts.canceled++;
     else counts.pending++;
   });
 
-  // --- 2. CALCULATE PERCENTAGES ---
   const getPct = (c) => (total > 0 ? ((c / total) * 100).toFixed(1) : "0.0");
 
-  // --- 3. RENDER FULL DISPLAY ---
   display.innerHTML = `
     <div class="summary-card">
-      <h2 style="color:var(--primary); margin-bottom:5px;">${reportTitle}</h2>
-      <p style="color:#64748b; margin-bottom:20px;">Range: ${formatDate(startVal)} to ${formatDate(endVal)}</p>
-      
-      <div style="background:#f1f5f9; padding:20px; border-radius:12px; text-align:center; margin-bottom:25px; border: 1px solid #e2e8f0;">
-        <div style="font-size:0.8rem; text-transform:uppercase; color:#64748b; letter-spacing:1px;">Total Requests in Period</div>
-        <div style="font-size:2.8rem; font-weight:bold; color:var(--primary);">${total}</div>
+      <h2 style="color:var(--primary);">${reportTitle}</h2>
+      <p>Range: ${formatDate(startVal)} to ${formatDate(endVal)}</p>
+      <div style="background:#f1f5f9; padding:20px; border-radius:12px; text-align:center; margin:20px 0;">
+        <div style="font-size:0.8rem; text-transform:uppercase; color:#64748b;">Total Number of Requests</div>
+        <div style="font-size:2.5rem; font-weight:bold; color:var(--primary);">${total}</div>
       </div>
-
-      <div style="display:grid; gap:15px;">
+      <div style="display:grid; gap:12px;">
         ${renderStatRow("Completed / Reported", counts.reported, getPct(counts.reported), "#16a34a")}
         ${renderStatRow("In Progress", counts["in-progress"], getPct(counts["in-progress"]), "#ca8a04")}
         ${renderStatRow("Pending", counts.pending, getPct(counts.pending), "#2563eb")}
         ${renderStatRow("Canceled", counts.canceled, getPct(counts.canceled), "#dc2626")}
       </div>
-
-      <button class="btn btn-add" style="width:100%; margin-top:30px; height:50px; font-weight:bold;"
-        onclick="exportToPDF('${reportTitle}', '${startVal}', '${endVal}')">
+      <button class="btn btn-add" style="width:100%; margin-top:25px;" onclick="exportToPDF('${reportTitle}', '${startVal}', '${endVal}')">
         DOWNLOAD PDF REPORT
       </button>
     </div>`;
