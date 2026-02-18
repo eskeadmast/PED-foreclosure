@@ -257,7 +257,9 @@ function updateStatsCounters() {
 // --- 5. REPORTS & PDF EXPORT
 window.runCustomReport = function (reportTitle) {
   const startVal = document.getElementById("start-date").value; // MM/DD/YYYY
+  console.log(startVal);
   const endVal = document.getElementById("end-date").value; // MM/DD/YYYY
+  console.log(endVal);
   const display = document.getElementById("active-report-display");
 
   if (!startVal || !endVal) return alert("Please select a valid date range.");
@@ -276,6 +278,7 @@ window.runCustomReport = function (reportTitle) {
   const filtered = foreclosureData.filter((item) => {
     if (!item.dateOfRequest) return false;
     const itemDate = new Date(item.dateOfRequest);
+    console.log(itemDate);
     return itemDate >= startDate && itemDate <= endDate;
   });
 
