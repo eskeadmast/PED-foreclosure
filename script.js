@@ -8,7 +8,8 @@
 let editId = null;
 let foreclosureData = []; // Holds database records
 const API_BASE_URL = "https://ped-foreclosure-back.onrender.com/api/v1";
-
+// Ensure this is global
+window.foreclosureData = window.foreclosureData || [];
 /**
  * Utility: Format ISO dates to DD-MM-YYYY
  */
@@ -86,14 +87,13 @@ window.loadDataFromDB = async () => {
     });
     const result = await response.json();
 
-    // THE FIX: Assign result to the GLOBAL variable used by runCustomReport
-    // Depending on your API structure, it might be result.data or result.data.data
-    foreclosureData = result.data?.data || result.data || result;
+    // Explicitly attach to window
+    window.foreclosureData = result.data?.data || result.data || [];
 
-    console.log("Global Data Loaded:", foreclosureData.length); // Should log 3
-    render(); // Your function to draw the table/dashboard
+    console.log("Sync Complete. Records:", window.foreclosureData.length);
+    render();
   } catch (error) {
-    console.error("Data Load Error:", error);
+    console.error("Sync Error:", error);
   }
 };
 
@@ -269,21 +269,27 @@ function parseFormDateToUTC(dateStr, endOfDay = false) {
 
 // --- Run Custom Report (AMENDED) ---
 // --- Run Custom Report (FIXED SCOPE & INITIALIZATION) ---
+// --- Run Custom Report (AMENDED & SCOPE-FIXED) ---
 window.runCustomReport = function (reportTitle) {
-  // 1. Define the display element FIRST to avoid ReferenceError
+  // 1. Initialize display immediately to prevent 'ReferenceError'
   const display = document.getElementById("active-report-display");
   const startVal = document.getElementById("start-date").value;
   const endVal = document.getElementById("end-date").value;
 
-  if (!display) return console.error("Display element not found");
+  if (!display) return;
 
-  // 2. Data Validation with a "Force Check"
-  // If the variable is empty but the dashboard says 3, we look for data again
-  if (!window.foreclosureData || window.foreclosureData.length === 0) {
-    display.innerHTML = `<div class="summary-card" style="border-left: 6px solid red;">
-      <h3>Data Sync Error</h3>
-      <p>The system found records on the dashboard, but they are not accessible to the report. Please click "Load Data" or refresh.</p>
-    </div>`;
+  // 2. Access the data via the global window object
+  // This ensures the report sees exactly what the dashboard sees
+  const data = window.foreclosureData || [];
+
+  if (data.length === 0) {
+    display.innerHTML = `
+      <div class="summary-card" style="border-left: 6px solid #dc2626;">
+        <h3 style="color:#dc2626;">Data Sync Error</h3>
+        <p>The dashboard shows records, but the report variable is empty. 
+        Please click the button below to force a data sync.</p>
+        <button class="btn btn-util" onclick="window.loadDataFromDB()">SYNC DATA NOW</button>
+      </div>`;
     return;
   }
 
@@ -293,8 +299,8 @@ window.runCustomReport = function (reportTitle) {
   const startUTC = parseFormDateToUTC(startVal);
   const endUTC = parseFormDateToUTC(endVal, true);
 
-  // 4. Filtering Logic
-  const filtered = window.foreclosureData.filter((item) => {
+  // 4. Filtering
+  const filtered = data.filter((item) => {
     if (!item.dateOfRequest) return false;
     const itemUTC = new Date(item.dateOfRequest).getTime();
     return itemUTC >= startUTC && itemUTC <= endUTC;
@@ -306,12 +312,13 @@ window.runCustomReport = function (reportTitle) {
     display.innerHTML = `
       <div class="summary-card" style="border-left: 6px solid #f59e0b;">
         <h3>No Records Found</h3>
-        <p>Checked ${window.foreclosureData.length} records, none matched ${formatDate(startVal)} to ${formatDate(endVal)}.</p>
+        <p>Checked <b>${data.length}</b> total records in the system. 
+        None matched the range: ${formatDate(startVal)} to ${formatDate(endVal)}.</p>
       </div>`;
     return;
   }
 
-  // 5. STATS CALCULATIONS (Unomitted Math)
+  // 5. FULL STATS CALCULATIONS (UNOMITTED)
   let counts = { reported: 0, pending: 0, canceled: 0, "in-progress": 0 };
 
   filtered.forEach((item) => {
@@ -328,25 +335,25 @@ window.runCustomReport = function (reportTitle) {
 
   const getPct = (c) => (total > 0 ? ((c / total) * 100).toFixed(1) : "0.0");
 
-  // 6. RENDER DISPLAY
+  // 6. RENDER SUMMARY
   display.innerHTML = `
     <div class="summary-card">
       <h2 style="color:var(--primary); margin-bottom:5px;">${reportTitle}</h2>
       <p style="color:#64748b; margin-bottom:20px;">Range: ${formatDate(startVal)} to ${formatDate(endVal)}</p>
       
-      <div style="background:#f1f5f9; padding:20px; border-radius:12px; text-align:center; margin-bottom:25px; border: 1px solid #e2e8f0;">
-        <div style="font-size:0.8rem; text-transform:uppercase; color:#64748b;">Total Requests Found</div>
+      <div style="background:#f1f5f9; padding:20px; border-radius:12px; text-align:center; margin-bottom:25px; border:1px solid #e2e8f0;">
+        <div style="font-size:0.8rem; text-transform:uppercase; color:#64748b; letter-spacing:1px;">Total Requests in Period</div>
         <div style="font-size:2.8rem; font-weight:bold; color:var(--primary);">${total}</div>
       </div>
 
-      <div style="display:grid; gap:15px;">
+      <div style="display:grid; gap:12px;">
         ${renderStatRow("Completed / Reported", counts.reported, getPct(counts.reported), "#16a34a")}
         ${renderStatRow("In Progress", counts["in-progress"], getPct(counts["in-progress"]), "#ca8a04")}
         ${renderStatRow("Pending", counts.pending, getPct(counts.pending), "#2563eb")}
         ${renderStatRow("Canceled", counts.canceled, getPct(counts.canceled), "#dc2626")}
       </div>
 
-      <button class="btn btn-add" style="width:100%; margin-top:30px; height:50px; font-weight:bold;"
+      <button class="btn btn-add" style="width:100%; margin-top:25px; height:50px; font-weight:bold;"
         onclick="exportToPDF('${reportTitle}', '${startVal}', '${endVal}')">
         DOWNLOAD PDF REPORT
       </button>
