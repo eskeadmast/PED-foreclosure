@@ -280,7 +280,9 @@ window.runCustomReport = function (reportTitle) {
 
   const filtered = foreclosureData.filter((item) => {
     if (!item.dateOfRequest) return false;
-    const itemDate = new Date(item.dateOfRequest); // already UTC
+    const itemDate = new Date(item.dateOfRequest); // UTC from DB
+    console.log("DB:", item.dateOfRequest, "Parsed:", itemDate);
+    console.log("Start:", startDate, "End:", endDate);
     return itemDate >= startDate && itemDate <= endDate;
   });
 
