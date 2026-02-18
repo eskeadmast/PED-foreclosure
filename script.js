@@ -261,13 +261,21 @@ function updateStatsCounters() {
 
 // --- 5. DETAILED REPORTS & PDF EXPORT (FIXED UTC ISSUE) ---
 // --- UTC Date Helper ---
+// --- UTC Date Helpers ---
 function parseDateAsUTC(dateStr) {
   if (!dateStr) return null;
   const [y, m, d] = dateStr.split("-").map(Number);
   return new Date(Date.UTC(y, m - 1, d)); // UTC midnight
 }
 
-// --- 5. DETAILED REPORTS & PDF EXPORT (UTC-FIXED) ---
+// Convert a Date to UTC midnight for date-only comparison
+function getUTCDateOnly(date) {
+  return new Date(
+    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()),
+  );
+}
+
+// --- 5. DETAILED REPORTS & PDF EXPORT (UTC-SAFE) ---
 window.runCustomReport = function (reportTitle) {
   const startVal = document.getElementById("start-date").value;
   const endVal = document.getElementById("end-date").value;
@@ -275,17 +283,17 @@ window.runCustomReport = function (reportTitle) {
 
   if (!startVal || !endVal) return alert("Please select a valid date range.");
 
-  const startDate = parseDateAsUTC(startVal);
-  const endDate = parseDateAsUTC(endVal);
-  endDate.setUTCHours(23, 59, 59, 999); // End of day in UTC
+  const startDate = parseDateAsUTC(startVal); // UTC midnight start
+  const endDate = parseDateAsUTC(endVal); // UTC midnight end
+  endDate.setUTCHours(23, 59, 59, 999); // Include full end day
 
   const filtered = foreclosureData.filter((item) => {
     if (!item.dateOfRequest) return false;
-    const itemDate = new Date(item.dateOfRequest); // UTC from DB
-    console.log("DB:", item.dateOfRequest, "Parsed:", itemDate);
-    console.log("Start:", startDate, "End:", endDate);
+    const itemDate = getUTCDateOnly(new Date(item.dateOfRequest));
     return itemDate >= startDate && itemDate <= endDate;
   });
+
+  console.log("Filtered records:", filtered.length, filtered);
 
   const total = filtered.length;
 
@@ -331,6 +339,7 @@ window.runCustomReport = function (reportTitle) {
     </div>`;
 };
 
+// --- PDF EXPORT (UTC-SAFE) ---
 window.exportToPDF = function (title, startDate, endDate) {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF("l", "mm", "a4");
@@ -341,7 +350,7 @@ window.exportToPDF = function (title, startDate, endDate) {
 
   const filtered = foreclosureData.filter((item) => {
     if (!item.dateOfRequest) return false;
-    const itemDate = new Date(item.dateOfRequest);
+    const itemDate = getUTCDateOnly(new Date(item.dateOfRequest));
     return itemDate >= start && itemDate <= end;
   });
 
