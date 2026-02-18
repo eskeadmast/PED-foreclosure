@@ -255,35 +255,42 @@ function updateStatsCounters() {
 }
 
 // --- 5. REPORTS & PDF EXPORT
-window.runCustomReport = function (reportTitle) {
-  const startVal = document.getElementById("start-date").value; // MM/DD/YYYY
-  console.log(startVal);
-  const endVal = document.getElementById("end-date").value; // MM/DD/YYYY
-  console.log(endVal);
-  const display = document.getElementById("active-report-display");
+// --- FILTER FUNCTION (MM/DD/YYYY INPUT) ---
+function filterDataByRequestDate(startInput, endInput) {
+  if (!startInput || !endInput) return [];
 
-  if (!startVal || !endVal) return alert("Please select a valid date range.");
-
-  // --- Parse MM/DD/YYYY to UTC ---
-  const parseDate = (str) => {
-    const [m, d, y] = str.split("/").map(Number);
-    return new Date(Date.UTC(y, m - 1, d));
+  // Parse MM/DD/YYYY from the form into UTC
+  const parseFormDate = (dateStr) => {
+    const [m, d, y] = dateStr.split("/").map(Number);
+    return new Date(Date.UTC(y, m - 1, d)); // UTC midnight
   };
 
-  const startDate = parseDate(startVal);
-  const endDate = parseDate(endVal);
-  endDate.setUTCHours(23, 59, 59, 999); // End of day in UTC
+  const startDate = parseFormDate(startInput);
+  const endDate = parseFormDate(endInput);
+  endDate.setUTCHours(23, 59, 59, 999); // End of day UTC
 
-  // --- Filter records by dateOfRequest ---
+  console.log("Filtering between:", startDate, endDate);
+
   const filtered = foreclosureData.filter((item) => {
     if (!item.dateOfRequest) return false;
-    const itemDate = new Date(item.dateOfRequest);
-    console.log(itemDate);
+    const itemDate = new Date(item.dateOfRequest); // UTC from DB
     return itemDate >= startDate && itemDate <= endDate;
   });
 
   console.log("Filtered records:", filtered.length, filtered);
+  return filtered;
+}
 
+// --- RUN CUSTOM REPORT ---
+window.runCustomReport = function (reportTitle) {
+  const startVal = document.getElementById("start-date").value;
+  const endVal = document.getElementById("end-date").value;
+  const display = document.getElementById("active-report-display");
+
+  if (!startVal || !endVal) return alert("Please select a valid date range.");
+
+  // Use the new filter function
+  const filtered = filterDataByRequestDate(startVal, endVal);
   const total = filtered.length;
 
   if (total === 0) {
@@ -309,7 +316,6 @@ window.runCustomReport = function (reportTitle) {
 
   const getPct = (c) => (total > 0 ? ((c / total) * 100).toFixed(1) : "0.0");
 
-  // --- Render Summary Card ---
   display.innerHTML = `
     <div class="summary-card">
       <h2 style="color:var(--primary); margin-bottom:5px;">${reportTitle}</h2>
@@ -329,20 +335,12 @@ window.runCustomReport = function (reportTitle) {
     </div>`;
 };
 
-// PDF export (uses same UTC filtering)
+// --- EXPORT TO PDF ---
 window.exportToPDF = function (title, startDate, endDate) {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF("l", "mm", "a4");
 
-  const startTS = parseFormDateToUTC(startDate);
-  const endTS = parseFormDateToUTC(endDate) + 86399999;
-
-  const filtered = foreclosureData.filter((item) => {
-    if (!item.dateOfRequest) return false;
-    const itemTS = new Date(item.dateOfRequest).getTime();
-    return itemTS >= startTS && itemTS <= endTS;
-  });
-
+  const filtered = filterDataByRequestDate(startDate, endDate);
   if (filtered.length === 0) {
     alert("No records found for the selected date range.");
     return;
