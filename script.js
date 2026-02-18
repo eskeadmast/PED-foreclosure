@@ -260,20 +260,28 @@ function updateStatsCounters() {
 }
 
 // --- 5. DETAILED REPORTS & PDF EXPORT (FIXED UTC ISSUE) ---
-// --- UTC Date Helper ---
-function parseDateAsUTC(dateStr) {
+// --- UTC Date Helper for Form Inputs (MM/DD/YYYY or YYYY-MM-DD) ---
+function parseFormDateToUTC(dateStr) {
   if (!dateStr) return null;
-  const [y, m, d] = dateStr.split("-").map(Number);
+
+  let m, d, y;
+
+  if (dateStr.includes("/")) {
+    // MM/DD/YYYY
+    const parts = dateStr.split("/");
+    [m, d, y] = parts.map(Number);
+  } else if (dateStr.includes("-")) {
+    // YYYY-MM-DD
+    const parts = dateStr.split("-");
+    [y, m, d] = parts.map(Number);
+  } else {
+    return null;
+  }
+
   return new Date(Date.UTC(y, m - 1, d)); // UTC midnight
 }
 
-// --- Robust DB date parser ---
-function parseDateFromFormMMDDYYYY(dateStr) {
-  if (!dateStr) return null;
-  const [m, d, y] = dateStr.split("/").map(Number); // <-- use "/" not "-"
-  return new Date(Date.UTC(y, m - 1, d)); // UTC midnight
-}
-
+// --- Run Custom Report ---
 window.runCustomReport = function (reportTitle) {
   const startVal = document.getElementById("start-date").value;
   const endVal = document.getElementById("end-date").value;
@@ -281,16 +289,17 @@ window.runCustomReport = function (reportTitle) {
 
   if (!startVal || !endVal) return alert("Please select a valid date range.");
 
-  const startDate = parseDateFromFormMMDDYYYY(startVal);
-  const endDate = parseDateFromFormMMDDYYYY(endVal);
-  endDate.setUTCHours(23, 59, 59, 999); // End of day UTC
+  const startDate = parseFormDateToUTC(startVal);
+  const endDate = parseFormDateToUTC(endVal);
+  endDate.setUTCHours(23, 59, 59, 999); // End of day in UTC
 
   const filtered = foreclosureData.filter((item) => {
     if (!item.dateOfRequest) return false;
     const itemDate = new Date(item.dateOfRequest); // ISO from DB
-    console.log("DB:", item.dateOfRequest, "Item date:", itemDate);
-    console.log("Range:", startDate, endDate);
-    return itemDate >= startDate && itemDate <= endDate;
+    return (
+      itemDate.getTime() >= startDate.getTime() &&
+      itemDate.getTime() <= endDate.getTime()
+    );
   });
 
   console.log("Filtered records:", filtered.length, filtered);
@@ -337,6 +346,66 @@ window.runCustomReport = function (reportTitle) {
       <button class="btn btn-add" style="width:100%; margin-top:25px; height:50px; font-weight:bold;"
         onclick="exportToPDF('${reportTitle}', '${startVal}', '${endVal}')">DOWNLOAD PDF REPORT</button>
     </div>`;
+};
+
+// --- Export to PDF ---
+window.exportToPDF = function (title, startDate, endDate) {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF("l", "mm", "a4");
+
+  const start = parseFormDateToUTC(startDate);
+  const end = parseFormDateToUTC(endDate);
+  end.setUTCHours(23, 59, 59, 999);
+
+  const filtered = foreclosureData.filter((item) => {
+    if (!item.dateOfRequest) return false;
+    const itemDate = new Date(item.dateOfRequest);
+    return (
+      itemDate.getTime() >= start.getTime() &&
+      itemDate.getTime() <= end.getTime()
+    );
+  });
+
+  if (filtered.length === 0) {
+    alert("No records found for the selected date range.");
+    return;
+  }
+
+  doc.setFontSize(16);
+  doc.text(`Foreclosure Report - ${title}`, 14, 15);
+
+  const tableBody = filtered.map((i) => [
+    i.applicantName || "",
+    i.branch || "",
+    i.siteLocation || "",
+    i.collateralType || "",
+    i.numberOfCollaterals || 0,
+    formatDate(i.dateOfRequest),
+    formatDate(i.dateOfReport),
+    i.reportStatus || "pending",
+  ]);
+
+  doc.autoTable({
+    startY: 25,
+    head: [
+      [
+        "Applicant",
+        "Branch",
+        "Location",
+        "Type",
+        "Number of Collaterals",
+        "Date Requested",
+        "Date Reported",
+        "Status",
+      ],
+    ],
+    body: tableBody,
+    theme: "grid",
+    headStyles: { fillColor: [2, 0, 102] },
+    styles: { fontSize: 10 },
+  });
+
+  doc.save(`${title}.pdf`);
 };
 
 // --- PDF Export ---
