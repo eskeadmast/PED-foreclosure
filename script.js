@@ -377,20 +377,26 @@ window.runCustomReport = function (reportTitle) {
 window.exportToPDF = function (title, startDate, endDate) {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF("l", "mm", "a4");
+
   const filtered = foreclosureData.filter((item) => {
     const d = item.dateOfRequest?.split("T")[0];
     return d >= startDate && d <= endDate;
   });
 
-  doc.setFontSize(16);
+  // Header Section
+  doc.setFontSize(18);
+  doc.setTextColor(2, 0, 102); // Primary Blue
   doc.text(`Foreclosure Management System - ${title}`, 14, 15);
+
   doc.setFontSize(10);
+  doc.setTextColor(100);
   doc.text(
-    `Report Period: ${formatDate(startDate)} to ${formatDate(endDate)}`,
+    `Report Period: ${formatDate(startDate)} to ${formatDate(endDate)} | Total Records: ${filtered.length}`,
     14,
     22,
   );
 
+  // Table Generation
   doc.autoTable({
     startY: 28,
     head: [
@@ -401,11 +407,11 @@ window.exportToPDF = function (title, startDate, endDate) {
       i.branch,
       i.siteLocation,
       `${i.collateralType} (${i.numberOfCollaterals})`,
-      i.reportStatus,
+      i.reportStatus.toUpperCase(),
       formatDate(i.dateOfRequest),
     ]),
     theme: "grid",
-    headStyles: { fillColor: [37, 99, 235] },
+    headStyles: { fillColor: [2, 0, 102] },
   });
 
   doc.save(`${title}_${startDate}.pdf`);
