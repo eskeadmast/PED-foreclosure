@@ -259,6 +259,14 @@ function updateStatsCounters() {
 }
 
 // --- 5. DETAILED REPORTS & PDF EXPORT (FIXED UTC ISSUE) ---
+// --- UTC Date Helper ---
+function parseDateAsUTC(dateStr) {
+  if (!dateStr) return null;
+  const [y, m, d] = dateStr.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d)); // UTC midnight
+}
+
+// --- 5. DETAILED REPORTS & PDF EXPORT (UTC-FIXED) ---
 window.runCustomReport = function (reportTitle) {
   const startVal = document.getElementById("start-date").value;
   const endVal = document.getElementById("end-date").value;
@@ -266,15 +274,13 @@ window.runCustomReport = function (reportTitle) {
 
   if (!startVal || !endVal) return alert("Please select a valid date range.");
 
-  // Parse dates and include the full end day
-  const startDate = new Date(startVal);
-  const endDate = new Date(endVal);
-  endDate.setHours(23, 59, 59, 999);
+  const startDate = parseDateAsUTC(startVal);
+  const endDate = parseDateAsUTC(endVal);
+  endDate.setUTCHours(23, 59, 59, 999); // End of day in UTC
 
-  // Filter data using UTC-aware comparison
   const filtered = foreclosureData.filter((item) => {
     if (!item.dateOfRequest) return false;
-    const itemDate = new Date(item.dateOfRequest); // database date in UTC
+    const itemDate = new Date(item.dateOfRequest); // already UTC
     return itemDate >= startDate && itemDate <= endDate;
   });
 
@@ -326,9 +332,9 @@ window.exportToPDF = function (title, startDate, endDate) {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF("l", "mm", "a4");
 
-  const start = new Date(startDate);
-  const end = new Date(endDate);
-  end.setHours(23, 59, 59, 999);
+  const start = parseDateAsUTC(startDate);
+  const end = parseDateAsUTC(endDate);
+  end.setUTCHours(23, 59, 59, 999);
 
   const filtered = foreclosureData.filter((item) => {
     if (!item.dateOfRequest) return false;
