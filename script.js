@@ -337,24 +337,56 @@ function renderStatRow(label, count, pct, color) {
 window.exportToPDF = function (title, startDate, endDate) {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF("l", "mm", "a4");
+
+  // Filter records based on dateOfRequest
+  const start = new Date(startDate + "T00:00:00");
+  const end = new Date(endDate + "T23:59:59");
+
   const filtered = foreclosureData.filter((item) => {
-    const d = item.dateOfRequest?.split("T")[0];
-    return d >= startDate && d <= endDate;
+    if (!item.dateOfRequest) return false;
+    const itemDate = new Date(item.dateOfRequest);
+    return itemDate >= start && itemDate <= end;
   });
+
+  if (filtered.length === 0) {
+    alert("No records found for the selected date range.");
+    return;
+  }
+
   doc.setFontSize(16);
   doc.text(`Foreclosure Report - ${title}`, 14, 15);
+
+  const tableBody = filtered.map((i) => [
+    i.applicantName || "",
+    i.branch || "",
+    i.siteLocation || "",
+    i.collateralType || "",
+    i.numberOfCollaterals || 0,
+    formatDate(i.dateOfRequest),
+    formatDate(i.dateOfReport),
+    i.reportStatus || "pending",
+  ]);
+
   doc.autoTable({
     startY: 25,
-    head: [["Applicant", "Branch", "Status", "Date Requested"]],
-    body: filtered.map((i) => [
-      i.applicantName,
-      i.branch,
-      i.reportStatus,
-      formatDate(i.dateOfRequest),
-    ]),
+    head: [
+      [
+        "Applicant",
+        "Branch",
+        "Location",
+        "Type",
+        "Number of Collaterals",
+        "Date Requested",
+        "Date Reported",
+        "Status",
+      ],
+    ],
+    body: tableBody,
     theme: "grid",
     headStyles: { fillColor: [2, 0, 102] },
+    styles: { fontSize: 10 },
   });
+
   doc.save(`${title}.pdf`);
 };
 
