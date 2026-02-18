@@ -266,14 +266,13 @@ window.runCustomReport = function (reportTitle) {
 
   if (!startVal || !endVal) return alert("Please select a valid date range.");
 
-  const startDate = new Date(startVal + "T00:00:00");
-  const endDate = new Date(endVal + "T23:59:59");
+  const startDate = new Date(startVal);
+  const endDate = new Date(endVal);
+  endDate.setHours(23, 59, 59, 999); // include full end day
 
   const filtered = foreclosureData.filter((item) => {
     if (!item.dateOfRequest) return false;
-
-    // Parse the backend ISO string to Date
-    const itemDate = new Date(item.dateOfRequest);
+    const itemDate = new Date(item.dateOfRequest); // parse UTC
     return itemDate >= startDate && itemDate <= endDate;
   });
 
