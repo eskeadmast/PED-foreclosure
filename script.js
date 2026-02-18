@@ -268,29 +268,33 @@ function parseFormDateToUTC(dateStr, endOfDay = false) {
 }
 
 // --- Run Custom Report (AMENDED) ---
+// --- Run Custom Report (FIXED SCOPE & INITIALIZATION) ---
 window.runCustomReport = function (reportTitle) {
-  // CRITICAL SYNC CHECK: If variable is empty, the report will always fail
-  if (!foreclosureData || foreclosureData.length === 0) {
-    console.error("Report Error: foreclosureData array is empty.");
-    display.innerHTML = `<div class="summary-card" style="border-left: 6px solid #dc2626;">
-      <h3>System Error: Data Not Loaded</h3>
-      <p>The report cannot run because the data hasn't been synced from the server.</p>
-      <button class="btn btn-util" onclick="location.reload()">Reload Page</button>
+  // 1. Define the display element FIRST to avoid ReferenceError
+  const display = document.getElementById("active-report-display");
+  const startVal = document.getElementById("start-date").value;
+  const endVal = document.getElementById("end-date").value;
+
+  if (!display) return console.error("Display element not found");
+
+  // 2. Data Validation with a "Force Check"
+  // If the variable is empty but the dashboard says 3, we look for data again
+  if (!window.foreclosureData || window.foreclosureData.length === 0) {
+    display.innerHTML = `<div class="summary-card" style="border-left: 6px solid red;">
+      <h3>Data Sync Error</h3>
+      <p>The system found records on the dashboard, but they are not accessible to the report. Please click "Load Data" or refresh.</p>
     </div>`;
     return;
   }
 
-  const startVal = document.getElementById("start-date").value;
-  const endVal = document.getElementById("end-date").value;
-  const display = document.getElementById("active-report-display");
-
   if (!startVal || !endVal) return alert("Please select a valid date range.");
 
+  // 3. UTC Safe Parsing
   const startUTC = parseFormDateToUTC(startVal);
   const endUTC = parseFormDateToUTC(endVal, true);
 
-  // Filter against your global variable
-  const filtered = foreclosureData.filter((item) => {
+  // 4. Filtering Logic
+  const filtered = window.foreclosureData.filter((item) => {
     if (!item.dateOfRequest) return false;
     const itemUTC = new Date(item.dateOfRequest).getTime();
     return itemUTC >= startUTC && itemUTC <= endUTC;
@@ -299,21 +303,24 @@ window.runCustomReport = function (reportTitle) {
   const total = filtered.length;
 
   if (total === 0) {
-    display.innerHTML = `<div class="summary-card" style="border-left: 6px solid #f59e0b;">
-      <h3>No Records Found</h3>
-      <p>Checked <b>${foreclosureData.length}</b> total system records. None fell between ${formatDate(startVal)} and ${formatDate(endVal)}.</p>
-    </div>`;
+    display.innerHTML = `
+      <div class="summary-card" style="border-left: 6px solid #f59e0b;">
+        <h3>No Records Found</h3>
+        <p>Checked ${window.foreclosureData.length} records, none matched ${formatDate(startVal)} to ${formatDate(endVal)}.</p>
+      </div>`;
     return;
   }
 
-  // --- STATS CALCULATIONS ---
+  // 5. STATS CALCULATIONS (Unomitted Math)
   let counts = { reported: 0, pending: 0, canceled: 0, "in-progress": 0 };
+
   filtered.forEach((item) => {
     let s = (item.reportStatus || "pending")
       .toLowerCase()
       .trim()
       .replace(/\s+/g, "-");
-    if (s.includes("reported")) counts.reported++;
+
+    if (s.includes("reported") || s === "completed") counts.reported++;
     else if (s.includes("progress")) counts["in-progress"]++;
     else if (s.includes("cancel")) counts.canceled++;
     else counts.pending++;
@@ -321,21 +328,26 @@ window.runCustomReport = function (reportTitle) {
 
   const getPct = (c) => (total > 0 ? ((c / total) * 100).toFixed(1) : "0.0");
 
+  // 6. RENDER DISPLAY
   display.innerHTML = `
     <div class="summary-card">
-      <h2 style="color:var(--primary);">${reportTitle}</h2>
-      <p>Range: ${formatDate(startVal)} to ${formatDate(endVal)}</p>
-      <div style="background:#f1f5f9; padding:20px; border-radius:12px; text-align:center; margin:20px 0;">
-        <div style="font-size:0.8rem; text-transform:uppercase; color:#64748b;">Total Number of Requests</div>
-        <div style="font-size:2.5rem; font-weight:bold; color:var(--primary);">${total}</div>
+      <h2 style="color:var(--primary); margin-bottom:5px;">${reportTitle}</h2>
+      <p style="color:#64748b; margin-bottom:20px;">Range: ${formatDate(startVal)} to ${formatDate(endVal)}</p>
+      
+      <div style="background:#f1f5f9; padding:20px; border-radius:12px; text-align:center; margin-bottom:25px; border: 1px solid #e2e8f0;">
+        <div style="font-size:0.8rem; text-transform:uppercase; color:#64748b;">Total Requests Found</div>
+        <div style="font-size:2.8rem; font-weight:bold; color:var(--primary);">${total}</div>
       </div>
-      <div style="display:grid; gap:12px;">
+
+      <div style="display:grid; gap:15px;">
         ${renderStatRow("Completed / Reported", counts.reported, getPct(counts.reported), "#16a34a")}
         ${renderStatRow("In Progress", counts["in-progress"], getPct(counts["in-progress"]), "#ca8a04")}
         ${renderStatRow("Pending", counts.pending, getPct(counts.pending), "#2563eb")}
         ${renderStatRow("Canceled", counts.canceled, getPct(counts.canceled), "#dc2626")}
       </div>
-      <button class="btn btn-add" style="width:100%; margin-top:25px;" onclick="exportToPDF('${reportTitle}', '${startVal}', '${endVal}')">
+
+      <button class="btn btn-add" style="width:100%; margin-top:30px; height:50px; font-weight:bold;"
+        onclick="exportToPDF('${reportTitle}', '${startVal}', '${endVal}')">
         DOWNLOAD PDF REPORT
       </button>
     </div>`;
@@ -475,3 +487,15 @@ window.onclick = function (event) {
   if (event.target == document.getElementById("modalOverlay"))
     window.closeModal();
 };
+function renderStatRow(label, count, pct, color) {
+  return `
+    <div>
+      <div style="display:flex; justify-content:space-between; font-size:0.9rem; margin-bottom:4px;">
+        <span><b>${label}:</b> ${count}</span>
+        <span>${pct}%</span>
+      </div>
+      <div style="width:100%; background:#e2e8f0; height:8px; border-radius:4px; overflow:hidden;">
+        <div style="width:${pct}%; background:${color}; height:100%;"></div>
+      </div>
+    </div>`;
+}
