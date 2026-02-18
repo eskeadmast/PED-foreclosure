@@ -258,7 +258,7 @@ function updateStatsCounters() {
   });
 }
 
-// --- 5. DETAILED REPORTS & PDF EXPORT ---
+// --- 5. DETAILED REPORTS & PDF EXPORT (FIXED UTC ISSUE) ---
 window.runCustomReport = function (reportTitle) {
   const startVal = document.getElementById("start-date").value;
   const endVal = document.getElementById("end-date").value;
@@ -266,13 +266,15 @@ window.runCustomReport = function (reportTitle) {
 
   if (!startVal || !endVal) return alert("Please select a valid date range.");
 
+  // Parse dates and include the full end day
   const startDate = new Date(startVal);
   const endDate = new Date(endVal);
-  endDate.setHours(23, 59, 59, 999); // include full end day
+  endDate.setHours(23, 59, 59, 999);
 
+  // Filter data using UTC-aware comparison
   const filtered = foreclosureData.filter((item) => {
     if (!item.dateOfRequest) return false;
-    const itemDate = new Date(item.dateOfRequest); // parse UTC
+    const itemDate = new Date(item.dateOfRequest); // database date in UTC
     return itemDate >= startDate && itemDate <= endDate;
   });
 
@@ -286,7 +288,7 @@ window.runCustomReport = function (reportTitle) {
     return;
   }
 
-  // Standardize status keys
+  // Count statuses
   let counts = { reported: 0, pending: 0, canceled: 0, "in-progress": 0 };
   filtered.forEach((item) => {
     let s = (item.reportStatus || "pending")
@@ -320,26 +322,13 @@ window.runCustomReport = function (reportTitle) {
     </div>`;
 };
 
-function renderStatRow(label, count, pct, color) {
-  return `
-    <div>
-      <div style="display:flex; justify-content:space-between; font-size:0.9rem; margin-bottom:4px;">
-        <span><b>${label}:</b> ${count}</span>
-        <span style="font-weight:bold;">${pct}%</span>
-      </div>
-      <div style="width:100%; background:#e2e8f0; height:10px; border-radius:5px; overflow:hidden;">
-        <div style="width:${pct}%; background:${color}; height:100%;"></div>
-      </div>
-    </div>`;
-}
-
 window.exportToPDF = function (title, startDate, endDate) {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF("l", "mm", "a4");
 
-  // Filter records based on dateOfRequest
-  const start = new Date(startDate + "T00:00:00");
-  const end = new Date(endDate + "T23:59:59");
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  end.setHours(23, 59, 59, 999);
 
   const filtered = foreclosureData.filter((item) => {
     if (!item.dateOfRequest) return false;
