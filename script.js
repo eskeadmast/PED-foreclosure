@@ -268,122 +268,121 @@ function updateStatsCounters() {
   });
 }
 
-// --- 6. REPORTS & PDF EXPORT (FULL CALCULATIONS) ---
-// --- 6. REPORTS & PDF EXPORT (RESTORED CALCULATIONS) ---
-
-/**
- * Generates a summary report based on a selected date range.
- * Includes total requests, status counts, and percentages.
- */
+// --- FULL REPORT LOGIC: START DATE TO END DATE ---
 window.runCustomReport = function (reportTitle) {
-  const startVal = document.getElementById("start-date").value;
-  const endVal = document.getElementById("end-date").value;
+  const startInput = document.getElementById("start-date").value; // e.g., "2026-02-17"
+  const endInput = document.getElementById("end-date").value; // e.g., "2026-02-18"
   const display = document.getElementById("active-report-display");
 
-  // Validate Input
-  if (!startVal || !endVal) {
-    return alert("Please select both a start and end date.");
+  if (!startInput || !endInput) {
+    return alert(
+      "Please select both a start and end date to generate the report.",
+    );
   }
 
-  // Convert inputs to date objects for robust comparison
-  const startDate = new Date(startVal);
+  // 1. NORMALIZE DATE RANGE
+  // We set start to 00:00:00 and end to 23:59:59 to capture the FULL days
+  const startDate = new Date(startInput);
   startDate.setHours(0, 0, 0, 0);
-  const endDate = new Date(endVal);
+
+  const endDate = new Date(endInput);
   endDate.setHours(23, 59, 59, 999);
 
-  // 1. Filter Data
+  // 2. FILTER DATA (Mapping specifically to your 'dateOfRequest')
   const filtered = foreclosureData.filter((item) => {
     if (!item.dateOfRequest) return false;
+
+    // Parse ISO string from DB: "2026-02-17T00:00:00.000+00:00"
     const itemDate = new Date(item.dateOfRequest);
+
+    // Check if item falls WITHIN the selected range
     return itemDate >= startDate && itemDate <= endDate;
   });
 
   const total = filtered.length;
 
-  // Handle Empty State
+  // 3. HANDLE EMPTY STATE
   if (total === 0) {
     display.innerHTML = `
-      <div class="summary-card" style="border-left: 8px solid #dc2626;">
-        <h3 style="color:#dc2626;">No Records Found</h3>
-        <p>There is no data available for the period: <b>${formatDate(startVal)}</b> to <b>${formatDate(endVal)}</b>.</p>
+      <div class="summary-card" style="border-left: 6px solid #f59e0b;">
+        <h3 style="color:#b45309; margin-top:0;">No Records in Selected Range</h3>
+        <p>We checked <b>${foreclosureData.length}</b> records. None matched <b>${formatDate(startInput)}</b> to <b>${formatDate(endInput)}</b>.</p>
+        <p style="font-size:0.85rem; color:#64748b;"><i>Tip: Try setting the start date one day earlier to account for UTC time differences.</i></p>
       </div>`;
     return;
   }
 
-  // 2. Calculate Counts for each Status
-  let counts = {
-    reported: 0,
-    pending: 0,
-    canceled: 0,
-    "in-progress": 0,
-  };
+  // 4. CALCULATE STATUS COUNTS & PERCENTAGES
+  let counts = { reported: 0, pending: 0, canceled: 0, "in-progress": 0 };
 
-  filtered.forEach((i) => {
-    const s = (i.reportStatus || "pending")
-      .toLowerCase()
-      .trim()
-      .replace(/\s+/g, "-");
+  filtered.forEach((item) => {
+    const status = (item.reportStatus || "pending").toLowerCase().trim();
 
-    // Mapping various string possibilities to keys
-    if (s.includes("reported") || s === "completed") counts.reported++;
-    else if (s.includes("progress")) counts["in-progress"]++;
-    else if (s.includes("cancel")) counts.canceled++;
-    else counts.pending++;
+    if (status.includes("reported") || status === "completed") {
+      counts.reported++;
+    } else if (status.includes("progress")) {
+      counts["in-progress"]++;
+    } else if (status.includes("cancel")) {
+      counts.canceled++;
+    } else {
+      counts.pending++;
+    }
   });
 
-  // 3. Percentage Calculation Utility
-  const getPct = (count) => ((count / total) * 100).toFixed(1);
+  // Percentage Helper
+  const getPct = (count) =>
+    total > 0 ? ((count / total) * 100).toFixed(1) : "0.0";
 
-  // 4. Render Summary Display
+  // 5. RENDER THE FINAL REPORT
   display.innerHTML = `
-    <div class="summary-card" id="report-printable-area">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-        <h2 style="margin:0; color:var(--primary);">${reportTitle}</h2>
-        <span style="font-size: 0.8rem; background: var(--slate-100); padding: 5px 10px; border-radius: 4px;">
-          Period: ${formatDate(startVal)} — ${formatDate(endVal)}
-        </span>
-      </div>
-
-      <div style="background: var(--slate-100); padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-        <div style="font-size: 1.2rem; font-weight: 800; color: var(--primary);">
-          Total Requests: ${total}
+    <div class="summary-card animate-in">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:20px; border-bottom:1px solid #eee; padding-bottom:15px;">
+        <div>
+          <h2 style="margin:0; color:var(--primary);">${reportTitle}</h2>
+          <span style="font-size:0.85rem; color:#64748b;">Range: ${formatDate(startInput)} — ${formatDate(endInput)}</span>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:0.7rem; color:#94a3b8; text-transform:uppercase;">Generated On</div>
+          <div style="font-size:0.85rem; font-weight:bold;">${formatDate(new Date())}</div>
         </div>
       </div>
 
-      <div class="report-stats-grid" style="display: grid; gap: 10px;">
-        ${renderStatLine("Completed (Reported)", counts.reported, getPct(counts.reported), "#16a34a")}
-        ${renderStatLine("In Progress", counts["in-progress"], getPct(counts["in-progress"]), "#ca8a04")}
-        ${renderStatLine("Pending", counts.pending, getPct(counts.pending), "#2563eb")}
-        ${renderStatLine("Canceled", counts.canceled, getPct(counts.canceled), "#dc2626")}
+      <div style="background:var(--primary); color:white; padding:20px; border-radius:12px; text-align:center; margin-bottom:25px; box-shadow: 0 4px 12px rgba(2,0,102,0.15);">
+        <div style="font-size:0.8rem; opacity:0.8; text-transform:uppercase; letter-spacing:1px; margin-bottom:5px;">Total Requests in Period</div>
+        <div style="font-size:2.8rem; font-weight:800;">${total}</div>
       </div>
 
-      <div style="margin-top: 25px; display: flex; gap: 10px;" class="no-print">
-         <button class="btn btn-add" style="flex: 1;" onclick="exportToPDF('${reportTitle}', '${startVal}', '${endVal}')">
-           DOWNLOAD PDF
-         </button>
-         <button class="btn btn-util" style="flex: 1;" onclick="window.print()">
-           PRINT VIEW
-         </button>
+      <div style="display:grid; gap:15px;">
+        ${renderStatRow("Completed / Reported", counts.reported, getPct(counts.reported), "#16a34a")}
+        ${renderStatRow("In Progress", counts["in-progress"], getPct(counts["in-progress"]), "#ca8a04")}
+        ${renderStatRow("Pending", counts.pending, getPct(counts.pending), "#2563eb")}
+        ${renderStatRow("Canceled", counts.canceled, getPct(counts.canceled), "#dc2626")}
+      </div>
+
+      <div style="margin-top:30px; display:flex; gap:10px;">
+        <button class="btn btn-add" style="flex:2; height:50px; font-weight:bold;" onclick="exportToPDF('${reportTitle}', '${startInput}', '${endInput}')">
+          DOWNLOAD PDF
+        </button>
+        <button class="btn btn-util" style="flex:1;" onclick="window.print()">
+          PRINT
+        </button>
       </div>
     </div>
   `;
 };
 
-/**
- * Helper to render individual stat lines with progress-bar look
- */
-function renderStatLine(label, count, percent, color) {
+// --- HELPER FOR VISUAL BARS ---
+function renderStatRow(label, count, percent, color) {
   return `
-    <div style="margin-bottom: 12px;">
-      <div style="display: flex; justify-content: space-between; font-size: 0.9rem; margin-bottom: 4px;">
+    <div>
+      <div style="display:flex; justify-content:space-between; font-size:0.9rem; margin-bottom:6px;">
         <span><b>${label}:</b> ${count}</span>
-        <span style="font-weight: bold;">${percent}%</span>
+        <span style="font-weight:700; color:#475569;">${percent}%</span>
       </div>
-      <div style="width: 100%; background: #e2e8f0; height: 8px; border-radius: 4px; overflow: hidden;">
-        <div style="width: ${percent}%; background: ${color}; height: 100%;"></div>
+      <div style="width:100%; background:#f1f5f9; height:12px; border-radius:6px; overflow:hidden; border:1px solid #e2e8f0;">
+        <div style="width:${percent}%; background:${color}; height:100%; transition: width 0.5s ease-out;"></div>
       </div>
-    </div>
-  `;
+    </div>`;
 }
 
 window.exportToPDF = function (title, startDate, endDate) {
