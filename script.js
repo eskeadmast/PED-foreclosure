@@ -266,18 +266,19 @@ window.runCustomReport = function (reportTitle) {
 
   if (!startVal || !endVal) return alert("Please select a valid date range.");
 
-  const startDate = new Date(startVal);
-  startDate.setHours(0, 0, 0, 0);
-  const endDate = new Date(endVal);
-  endDate.setHours(23, 59, 59, 999);
+  const startDate = new Date(startVal + "T00:00:00");
+  const endDate = new Date(endVal + "T23:59:59");
 
   const filtered = foreclosureData.filter((item) => {
     if (!item.dateOfRequest) return false;
+
+    // Parse the backend ISO string to Date
     const itemDate = new Date(item.dateOfRequest);
     return itemDate >= startDate && itemDate <= endDate;
   });
 
   const total = filtered.length;
+
   if (total === 0) {
     display.innerHTML = `<div class="summary-card" style="border-left: 6px solid #f59e0b;">
       <h3>No Records Found</h3>
@@ -286,9 +287,10 @@ window.runCustomReport = function (reportTitle) {
     return;
   }
 
+  // Standardize status keys
   let counts = { reported: 0, pending: 0, canceled: 0, "in-progress": 0 };
   filtered.forEach((item) => {
-    const s = (item.reportStatus || "pending")
+    let s = (item.reportStatus || "pending")
       .toLowerCase()
       .trim()
       .replace(/\s+/g, "-");
