@@ -93,6 +93,7 @@ window.loadDataFromDB = async () => {
 
     const result = await response.json();
     foreclosureData = result.data?.data || result.data || [];
+    console.log("Loaded foreclosureData:", foreclosureData);
     render();
   } catch (error) {
     console.error("Fetch error:", error);
