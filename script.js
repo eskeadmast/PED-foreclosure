@@ -1,6 +1,6 @@
 /**
  * ELITE REGISTRY - COMPLETE SYSTEM SCRIPT (Cookie-based Auth)
- * Version: 2.2.0
+ * Version: 2.2.1 (UTC-safe reporting fix)
  * Includes: Auth, CRUD, Avatar Initials, Reports
  */
 
@@ -31,14 +31,11 @@ const login = async (username, password) => {
       credentials: "include",
       body: JSON.stringify({ username, password }),
     });
-
     const result = await response.json();
     if (!response.ok) throw new Error(result.message || "Auth Failed");
 
-    // Save user name for avatar display
     const displayName = result.data.user?.name || "User";
     localStorage.setItem("userFullName", displayName);
-
     window.location.replace("dashboard.html");
   } catch (error) {
     alert("Authentication Failed: " + error.message);
@@ -67,9 +64,7 @@ window.logout = async function () {
   window.location.replace("index.html");
 };
 
-/**
- * Generates Avatar Initials (e.g., Ayantu Kassahun -> AK)
- */
+// --- Avatar Initials ---
 function updateAvatarUI() {
   const fullName = localStorage.getItem("userFullName") || "User";
   const container = document.getElementById("user-avatar-container");
@@ -165,7 +160,7 @@ async function handleSaveData(e) {
   const method = editId ? "PATCH" : "POST";
   try {
     const response = await fetch(url, {
-      method: method,
+      method,
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
       credentials: "include",
@@ -259,62 +254,46 @@ function updateStatsCounters() {
   });
 }
 
-// --- 5. DETAILED REPORTS & PDF EXPORT (FIXED UTC ISSUE) ---
-// --- UTC Date Helper for Form Inputs (MM/DD/YYYY or YYYY-MM-DD) ---
+// --- 5. REPORTS & PDF EXPORT (UTC-SAFE) ---
+// Parse form date (MM/DD/YYYY or YYYY-MM-DD) to UTC timestamp
 function parseFormDateToUTC(dateStr) {
   if (!dateStr) return null;
-
   let m, d, y;
-
-  if (dateStr.includes("/")) {
-    // MM/DD/YYYY
-    const parts = dateStr.split("/");
-    [m, d, y] = parts.map(Number);
-  } else if (dateStr.includes("-")) {
-    // YYYY-MM-DD
-    const parts = dateStr.split("-");
-    [y, m, d] = parts.map(Number);
-  } else {
-    return null;
-  }
-
-  return new Date(Date.UTC(y, m - 1, d)); // UTC midnight
+  if (dateStr.includes("/"))
+    [m, d, y] = dateStr.split("/").map(Number); // MM/DD/YYYY
+  else if (dateStr.includes("-"))
+    [y, m, d] = dateStr.split("-").map(Number); // YYYY-MM-DD
+  else return null;
+  return Date.UTC(y, m - 1, d);
 }
 
-// --- Run Custom Report ---
+// Run custom report
 window.runCustomReport = function (reportTitle) {
   const startVal = document.getElementById("start-date").value;
   const endVal = document.getElementById("end-date").value;
   const display = document.getElementById("active-report-display");
-
   if (!startVal || !endVal) return alert("Please select a valid date range.");
 
-  const startDate = parseFormDateToUTC(startVal);
-  const endDate = parseFormDateToUTC(endVal);
-  endDate.setUTCHours(23, 59, 59, 999); // End of day in UTC
+  const startTS = parseFormDateToUTC(startVal);
+  const endTS = parseFormDateToUTC(endVal) + 86399999; // inclusive end of day
 
   const filtered = foreclosureData.filter((item) => {
     if (!item.dateOfRequest) return false;
-    const itemDate = new Date(item.dateOfRequest); // ISO from DB
-    return (
-      itemDate.getTime() >= startDate.getTime() &&
-      itemDate.getTime() <= endDate.getTime()
-    );
+    const itemTS = new Date(item.dateOfRequest).getTime();
+    return itemTS >= startTS && itemTS <= endTS;
   });
 
   console.log("Filtered records:", filtered.length, filtered);
 
   const total = filtered.length;
-
   if (total === 0) {
     display.innerHTML = `<div class="summary-card" style="border-left: 6px solid #f59e0b;">
       <h3>No Records Found</h3>
-      <p>Checked ${foreclosureData.length} records, none matched ${formatDate(startVal)} to ${formatDate(endVal)}.</p>
+      <p>Checked ${foreclosureData.length} records, none matched ${startVal} to ${endVal}.</p>
     </div>`;
     return;
   }
 
-  // Count statuses
   let counts = { reported: 0, pending: 0, canceled: 0, "in-progress": 0 };
   filtered.forEach((item) => {
     let s = (item.reportStatus || "pending")
@@ -327,12 +306,12 @@ window.runCustomReport = function (reportTitle) {
     else counts.pending++;
   });
 
-  const getPct = (c) => (total > 0 ? ((c / total) * 100).toFixed(1) : "0.0");
+  const getPct = (c) => ((c / total) * 100).toFixed(1);
 
   display.innerHTML = `
     <div class="summary-card">
       <h2 style="color:var(--primary); margin-bottom:5px;">${reportTitle}</h2>
-      <p style="color:#64748b; margin-bottom:20px;">Range: ${formatDate(startVal)} to ${formatDate(endVal)}</p>
+      <p style="color:#64748b; margin-bottom:20px;">Range: ${startVal} to ${endVal}</p>
       <div style="background:#f1f5f9; padding:20px; border-radius:12px; text-align:center; margin-bottom:25px;">
         <div style="font-size:0.8rem; text-transform:uppercase; color:#64748b;">Total Requests in Period</div>
         <div style="font-size:2.5rem; font-weight:bold; color:var(--primary);">${total}</div>
@@ -348,80 +327,18 @@ window.runCustomReport = function (reportTitle) {
     </div>`;
 };
 
-// --- Export to PDF ---
+// PDF export (uses same UTC filtering)
 window.exportToPDF = function (title, startDate, endDate) {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF("l", "mm", "a4");
 
-  const start = parseFormDateToUTC(startDate);
-  const end = parseFormDateToUTC(endDate);
-  end.setUTCHours(23, 59, 59, 999);
+  const startTS = parseFormDateToUTC(startDate);
+  const endTS = parseFormDateToUTC(endDate) + 86399999;
 
   const filtered = foreclosureData.filter((item) => {
     if (!item.dateOfRequest) return false;
-    const itemDate = new Date(item.dateOfRequest);
-    return (
-      itemDate.getTime() >= start.getTime() &&
-      itemDate.getTime() <= end.getTime()
-    );
-  });
-
-  if (filtered.length === 0) {
-    alert("No records found for the selected date range.");
-    return;
-  }
-
-  doc.setFontSize(16);
-  doc.text(`Foreclosure Report - ${title}`, 14, 15);
-
-  const tableBody = filtered.map((i) => [
-    i.applicantName || "",
-    i.branch || "",
-    i.siteLocation || "",
-    i.collateralType || "",
-    i.numberOfCollaterals || 0,
-    formatDate(i.dateOfRequest),
-    formatDate(i.dateOfReport),
-    i.reportStatus || "pending",
-  ]);
-
-  doc.autoTable({
-    startY: 25,
-    head: [
-      [
-        "Applicant",
-        "Branch",
-        "Location",
-        "Type",
-        "Number of Collaterals",
-        "Date Requested",
-        "Date Reported",
-        "Status",
-      ],
-    ],
-    body: tableBody,
-    theme: "grid",
-    headStyles: { fillColor: [2, 0, 102] },
-    styles: { fontSize: 10 },
-  });
-
-  doc.save(`${title}.pdf`);
-};
-
-// --- PDF Export ---
-window.exportToPDF = function (title, startDate, endDate) {
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF("l", "mm", "a4");
-
-  const start = parseDateAsUTC(startDate);
-  const end = parseDateAsUTC(endDate);
-  end.setUTCHours(23, 59, 59, 999);
-
-  const filtered = foreclosureData.filter((item) => {
-    if (!item.dateOfRequest) return false;
-    const itemDate = parseDBDate(item.dateOfRequest);
-    if (!itemDate) return false;
-    return itemDate >= start && itemDate <= end;
+    const itemTS = new Date(item.dateOfRequest).getTime();
+    return itemTS >= startTS && itemTS <= endTS;
   });
 
   if (filtered.length === 0) {
@@ -530,7 +447,6 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // Real authentication check before loading data
   if (
     document.getElementById("desktop-body") ||
     document.getElementById("mobile-cards-container")
