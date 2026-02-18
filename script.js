@@ -270,11 +270,10 @@ function parseDateAsUTC(dateStr) {
 // --- Robust DB date parser ---
 function parseDateFromFormMMDDYYYY(dateStr) {
   if (!dateStr) return null;
-  const [m, d, y] = dateStr.split("-").map(Number);
+  const [m, d, y] = dateStr.split("/").map(Number); // <-- use "/" not "-"
   return new Date(Date.UTC(y, m - 1, d)); // UTC midnight
 }
 
-// --- Custom Report ---
 window.runCustomReport = function (reportTitle) {
   const startVal = document.getElementById("start-date").value;
   const endVal = document.getElementById("end-date").value;
@@ -284,12 +283,13 @@ window.runCustomReport = function (reportTitle) {
 
   const startDate = parseDateFromFormMMDDYYYY(startVal);
   const endDate = parseDateFromFormMMDDYYYY(endVal);
-  endDate.setUTCHours(23, 59, 59, 999); // End of day in UTC
+  endDate.setUTCHours(23, 59, 59, 999); // End of day UTC
 
   const filtered = foreclosureData.filter((item) => {
     if (!item.dateOfRequest) return false;
     const itemDate = new Date(item.dateOfRequest); // ISO from DB
-    console.log("DB:", item.dateOfRequest, "Parsed item date:", itemDate);
+    console.log("DB:", item.dateOfRequest, "Item date:", itemDate);
+    console.log("Range:", startDate, endDate);
     return itemDate >= startDate && itemDate <= endDate;
   });
 
