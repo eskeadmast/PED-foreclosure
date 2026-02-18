@@ -261,21 +261,31 @@ function updateStatsCounters() {
 
 // --- 5. DETAILED REPORTS & PDF EXPORT (FIXED UTC ISSUE) ---
 // --- UTC Date Helper ---
-// --- UTC Date Helpers ---
 function parseDateAsUTC(dateStr) {
   if (!dateStr) return null;
   const [y, m, d] = dateStr.split("-").map(Number);
   return new Date(Date.UTC(y, m - 1, d)); // UTC midnight
 }
 
-// Convert a Date to UTC midnight for date-only comparison
-function getUTCDateOnly(date) {
-  return new Date(
-    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()),
-  );
+// --- Robust DB date parser ---
+function parseDBDate(dateStr) {
+  if (!dateStr) return null;
+
+  // Try ISO format first
+  const d1 = new Date(dateStr);
+  if (!isNaN(d1.getTime())) return d1;
+
+  // Try DD-MM-YYYY format
+  const parts = dateStr.split("-");
+  if (parts.length === 3) {
+    const [day, month, year] = parts.map(Number);
+    return new Date(Date.UTC(year, month - 1, day));
+  }
+
+  return null; // fallback
 }
 
-// --- 5. DETAILED REPORTS & PDF EXPORT (UTC-SAFE) ---
+// --- Custom Report ---
 window.runCustomReport = function (reportTitle) {
   const startVal = document.getElementById("start-date").value;
   const endVal = document.getElementById("end-date").value;
@@ -283,13 +293,14 @@ window.runCustomReport = function (reportTitle) {
 
   if (!startVal || !endVal) return alert("Please select a valid date range.");
 
-  const startDate = parseDateAsUTC(startVal); // UTC midnight start
-  const endDate = parseDateAsUTC(endVal); // UTC midnight end
-  endDate.setUTCHours(23, 59, 59, 999); // Include full end day
+  const startDate = parseDateAsUTC(startVal);
+  const endDate = parseDateAsUTC(endVal);
+  endDate.setUTCHours(23, 59, 59, 999);
 
   const filtered = foreclosureData.filter((item) => {
     if (!item.dateOfRequest) return false;
-    const itemDate = getUTCDateOnly(new Date(item.dateOfRequest));
+    const itemDate = parseDBDate(item.dateOfRequest);
+    if (!itemDate) return false;
     return itemDate >= startDate && itemDate <= endDate;
   });
 
@@ -339,7 +350,7 @@ window.runCustomReport = function (reportTitle) {
     </div>`;
 };
 
-// --- PDF EXPORT (UTC-SAFE) ---
+// --- PDF Export ---
 window.exportToPDF = function (title, startDate, endDate) {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF("l", "mm", "a4");
@@ -350,7 +361,8 @@ window.exportToPDF = function (title, startDate, endDate) {
 
   const filtered = foreclosureData.filter((item) => {
     if (!item.dateOfRequest) return false;
-    const itemDate = getUTCDateOnly(new Date(item.dateOfRequest));
+    const itemDate = parseDBDate(item.dateOfRequest);
+    if (!itemDate) return false;
     return itemDate >= start && itemDate <= end;
   });
 
