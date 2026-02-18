@@ -255,6 +255,17 @@ function updateStatsCounters() {
 }
 
 // --- 5. DETAILED REPORTS & PDF EXPORT (UTC-SAFE) ---
+// --- UTC Helper ---
+function parseFormDateToUTC(dateStr, endOfDay = false) {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  if (!y || !m || !d) return null;
+  if (endOfDay) {
+    return Date.UTC(y, m - 1, d, 23, 59, 59, 999); // End of day UTC
+  }
+  return Date.UTC(y, m - 1, d, 0, 0, 0, 0); // Start of day UTC
+}
+
+// --- Run Custom Report (UTC-SAFE) ---
 // --- Run Custom Report (AMENDED WITH FULL STATS) ---
 window.runCustomReport = function (reportTitle) {
   const startVal = document.getElementById("start-date").value;
