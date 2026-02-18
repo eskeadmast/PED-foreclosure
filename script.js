@@ -268,8 +268,7 @@ function parseFormDateToUTC(dateStr, endOfDay = false) {
 }
 
 // --- Run Custom Report (AMENDED) ---
-// --- Run Custom Report (FIXED SCOPE & INITIALIZATION) ---
-// --- Run Custom Report (AMENDED & SCOPE-FIXED) ---
+
 window.runCustomReport = function (reportTitle) {
   // 1. Initialize display immediately to prevent 'ReferenceError'
   const display = document.getElementById("active-report-display");
@@ -361,26 +360,44 @@ window.runCustomReport = function (reportTitle) {
 };
 
 // --- Export PDF (UTC-SAFE) ---
+// --- Export PDF (FIXED FOR GLOBAL SCOPE) ---
 window.exportToPDF = function (title, startDate, endDate) {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF("l", "mm", "a4");
 
+  // 1. Use the UTC Parser to match the report screen logic exactly
   const startUTC = parseFormDateToUTC(startDate);
   const endUTC = parseFormDateToUTC(endDate, true);
 
-  const filtered = foreclosureData.filter((item) => {
+  // 2. CRITICAL FIX: Use window.foreclosureData so the records are found
+  const data = window.foreclosureData || [];
+
+  const filtered = data.filter((item) => {
     if (!item.dateOfRequest) return false;
     const itemUTC = new Date(item.dateOfRequest).getTime();
     return itemUTC >= startUTC && itemUTC <= endUTC;
   });
 
+  // 3. Safety Check
   if (filtered.length === 0) {
-    alert("No records found for the selected date range.");
+    alert(
+      "No records found in global memory for this range. Try clicking SYNC DATA NOW first.",
+    );
     return;
   }
 
+  // 4. Build the PDF
   doc.setFontSize(16);
+  doc.setTextColor(2, 0, 102); // Elite Registry Blue
   doc.text(`Foreclosure Report - ${title}`, 14, 15);
+
+  doc.setFontSize(10);
+  doc.setTextColor(100, 100, 100);
+  doc.text(
+    `Generated on: ${new Date().toLocaleString()} | Range: ${formatDate(startDate)} to ${formatDate(endDate)}`,
+    14,
+    22,
+  );
 
   const tableBody = filtered.map((i) => [
     i.applicantName || "",
@@ -390,30 +407,37 @@ window.exportToPDF = function (title, startDate, endDate) {
     i.numberOfCollaterals || 0,
     formatDate(i.dateOfRequest),
     formatDate(i.dateOfReport),
-    i.reportStatus || "pending",
+    (i.reportStatus || "pending").toUpperCase(),
   ]);
 
   doc.autoTable({
-    startY: 25,
+    startY: 28,
     head: [
       [
         "Applicant",
         "Branch",
         "Location",
         "Type",
-        "Number of Collaterals",
-        "Date Requested",
-        "Date Reported",
+        "Qty",
+        "Requested",
+        "Reported",
         "Status",
       ],
     ],
     body: tableBody,
     theme: "grid",
-    headStyles: { fillColor: [2, 0, 102] },
-    styles: { fontSize: 10 },
+    headStyles: { fillColor: [2, 0, 102], fontSize: 10 },
+    styles: { fontSize: 9, cellPadding: 3 },
+    alternateRowStyles: { fillColor: [245, 247, 250] },
   });
 
-  doc.save(`${title}.pdf`);
+  // 5. Add a Footer with the count
+  const finalY = doc.lastAutoTable.finalY || 30;
+  doc.setFontSize(11);
+  doc.setTextColor(0, 0, 0);
+  doc.text(`Total Records Found: ${filtered.length}`, 14, finalY + 10);
+
+  doc.save(`${title.replace(/\s+/g, "_")}_Report.pdf`);
 };
 
 // --- 6. MODAL UTILITIES ---
