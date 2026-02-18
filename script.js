@@ -1,12 +1,6 @@
-/**
- * ELITE REGISTRY - COMPLETE SYSTEM SCRIPT (Cookie-based Auth)
- * Version: 2.2.1 (UTC-safe reporting fix)
- * Includes: Auth, CRUD, Avatar Initials, Reports
- */
-
 // --- 1. GLOBAL STATE & CONFIGURATION ---
 let editId = null;
-let foreclosureData = []; // Holds database records
+// let foreclosureData = []; // Holds database records
 const API_BASE_URL = "https://ped-foreclosure-back.onrender.com/api/v1";
 // Ensure this is global
 window.foreclosureData = window.foreclosureData || [];
@@ -91,7 +85,7 @@ window.loadDataFromDB = async () => {
     window.foreclosureData = result.data?.data || result.data || [];
 
     console.log("Sync Complete. Records:", window.foreclosureData.length);
-    render();
+    render(window.foreclosureData);
   } catch (error) {
     console.error("Sync Error:", error);
   }
@@ -114,7 +108,7 @@ window.deleteData = async (id) => {
 
 window.openEdit = (id) => {
   editId = id;
-  const item = foreclosureData.find((x) => (x._id || x.id) === id);
+  const item = window.foreclosureData.find((x) => (x._id || x.id) === id);
   if (!item) return;
   document.getElementById("modalTitle").textContent = "Edit Record";
   document.getElementById("progressiveSection").style.display = "block";
@@ -176,57 +170,84 @@ async function handleSaveData(e) {
 }
 
 // --- 4. UI RENDERING ---
-function render(dataToRender = foreclosureData) {
+function render(dataToRender) {
+  const data = dataToRender || window.foreclosureData;
+
   const desktopTableBody = document.getElementById("desktop-body");
   const mobileContainer = document.getElementById("mobile-cards-container");
+
   if (desktopTableBody) desktopTableBody.innerHTML = "";
   if (mobileContainer) mobileContainer.innerHTML = "";
 
-  dataToRender
+  if (!data || data.length === 0) {
+    console.log("Render received empty data");
+    return;
+  }
+
+  data
     .slice()
     .reverse()
     .forEach((item) => {
       const statusRaw = (item.reportStatus || "pending").toLowerCase().trim();
       const s = statusRaw.replace(/\s+/g, "-");
-      const id = item._id || item.id;
+      const id = item._id;
 
+      // ===== DESKTOP TABLE =====
       if (desktopTableBody) {
-        desktopTableBody.innerHTML += `
-        <tr>
-          <td><b>${item.applicantName}</b></td>
-          <td>${item.branch}</td>
-          <td>${item.siteLocation}</td>
-          <td>${item.collateralType}</td>
-          <td>${item.numberOfCollaterals}</td>
-          <td>${formatDate(item.dateOfRequest)}</td>
-          <td>${formatDate(item.dateOfAppointment)}</td>
-          <td>${item.engineerName || ""}</td>
-          <td><span class="pill ${s}">${s}</span></td>
-          <td>${formatDate(item.dateOfReport)}</td>
-          <td>${item.remarks || ""}</td>
-          <td>
-            <div class="actions">
-              <button class="act-btn e-btn" onclick="openEdit('${id}')">Edit</button>
-              <button class="act-btn d-btn" onclick="deleteData('${id}')">Delete</button>
-            </div>
-          </td>
-        </tr>`;
-      }
+        const row = document.createElement("tr");
 
-      if (mobileContainer) {
-        mobileContainer.innerHTML += `
-        <div class="card">
-          <div class="card-header">
-            <div><h3 class="card-title">${item.applicantName}</h3><div class="card-subtitle">${item.branch}</div></div>
-            <span class="pill ${s}">${s}</span>
-          </div>
+        row.innerHTML = `
+        <td><b>${item.applicantName || ""}</b></td>
+        <td>${item.branch || ""}</td>
+        <td>${item.siteLocation || ""}</td>
+        <td>${item.collateralType || ""}</td>
+        <td>${item.numberOfCollaterals || 0}</td>
+        <td>${formatDate(item.dateOfRequest)}</td>
+        <td>${formatDate(item.dateOfReport)}</td>
+        <td><span class="pill ${s}">${s}</span></td>
+        <td>
           <div class="actions">
             <button class="act-btn e-btn" onclick="openEdit('${id}')">Edit</button>
             <button class="act-btn d-btn" onclick="deleteData('${id}')">Delete</button>
           </div>
-        </div>`;
+        </td>
+      `;
+
+        desktopTableBody.appendChild(row);
+      }
+
+      // ===== MOBILE CARDS =====
+      if (mobileContainer) {
+        const card = document.createElement("div");
+        card.className = "card";
+
+        card.innerHTML = `
+        <div class="card-header">
+          <div>
+            <h3 class="card-title">${item.applicantName || ""}</h3>
+            <div class="card-subtitle">${item.branch || ""}</div>
+          </div>
+          <span class="pill ${s}">${s}</span>
+        </div>
+
+        <div class="card-body">
+          <p><b>Location:</b> ${item.siteLocation || ""}</p>
+          <p><b>Type:</b> ${item.collateralType || ""}</p>
+          <p><b>Qty:</b> ${item.numberOfCollaterals || 0}</p>
+          <p><b>Requested:</b> ${formatDate(item.dateOfRequest)}</p>
+          <p><b>Reported:</b> ${formatDate(item.dateOfReport)}</p>
+        </div>
+
+        <div class="actions">
+          <button class="act-btn e-btn" onclick="openEdit('${id}')">Edit</button>
+          <button class="act-btn d-btn" onclick="deleteData('${id}')">Delete</button>
+        </div>
+      `;
+
+        mobileContainer.appendChild(card);
       }
     });
+
   updateStatsCounters();
 }
 
@@ -359,7 +380,6 @@ window.runCustomReport = function (reportTitle) {
     </div>`;
 };
 
-// --- Export PDF (UTC-SAFE) ---
 // --- Export PDF (FIXED FOR GLOBAL SCOPE) ---
 window.exportToPDF = function (title, startDate, endDate) {
   const { jsPDF } = window.jspdf;
@@ -495,7 +515,7 @@ document.addEventListener("DOMContentLoaded", () => {
   if (findTxt) {
     findTxt.addEventListener("input", () => {
       const term = findTxt.value.toLowerCase();
-      const filtered = foreclosureData.filter(
+      const filtered = window.foreclosureData.filter(
         (i) =>
           i.applicantName?.toLowerCase().includes(term) ||
           i.branch?.toLowerCase().includes(term),
