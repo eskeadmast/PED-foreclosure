@@ -259,15 +259,24 @@ function updateStatsCounters() {
 function filterDataByRequestDate(startInput, endInput) {
   if (!startInput || !endInput) return [];
 
-  // Parse MM/DD/YYYY from the form into UTC
+  // Parse MM/DD/YYYY safely
   const parseFormDate = (dateStr) => {
-    const [m, d, y] = dateStr.split("/").map(Number);
-    return new Date(Date.UTC(y, m - 1, d)); // UTC midnight
+    const parts = dateStr.trim().split("/");
+    if (parts.length !== 3) return null;
+    const m = Number(parts[0]);
+    const d = Number(parts[1]);
+    const y = Number(parts[2]);
+    if (isNaN(m) || isNaN(d) || isNaN(y)) return null;
+    return new Date(Date.UTC(y, m - 1, d));
   };
 
   const startDate = parseFormDate(startInput);
   const endDate = parseFormDate(endInput);
-  endDate.setUTCHours(23, 59, 59, 999); // End of day UTC
+  if (!startDate || !endDate) {
+    console.error("Invalid start or end date from form:", startInput, endInput);
+    return [];
+  }
+  endDate.setUTCHours(23, 59, 59, 999);
 
   console.log("Filtering between:", startDate, endDate);
 
