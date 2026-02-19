@@ -203,10 +203,13 @@ function render(dataToRender) {
         <td>${item.collateralType || ""}</td>
         <td>${item.numberOfCollaterals || 0}</td>
         <td>${formatDate(item.dateOfRequest)}</td>
+        <td>${formatDate(item.dateOfAppointment)}</td>
+        <td>${item.engineerName || ""}</td>
         <td>${formatDate(item.dateOfReport)}</td>
         <td><span class="pill ${s}">${s}</span></td>
         <td>
-          <div class="actions">
+        <td>${item.remarks || ""}</td>
+        <div class="actions">
             <button class="act-btn e-btn" onclick="openEdit('${id}')">Edit</button>
             <button class="act-btn d-btn" onclick="deleteData('${id}')">Delete</button>
           </div>
