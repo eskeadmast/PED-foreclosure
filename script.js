@@ -541,6 +541,7 @@ window.onclick = function (event) {
   if (event.target == document.getElementById("modalOverlay"))
     window.closeModal();
 };
+document.querySelector(".btn-cancel").addEventListener("click", closeModal);
 function renderStatRow(label, count, pct, color) {
   return `
     <div>
