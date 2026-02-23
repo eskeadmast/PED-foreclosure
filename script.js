@@ -209,14 +209,16 @@ function render(dataToRender) {
         <td><span class="pill ${s}">${s}</span></td>
         <td>
         <td>${item.remarks || ""}</td>
+        </td>
+        <td>
         <div class="actions">
-            <button class="act-btn e-btn" onclick="openEdit('${id}')">Edit</button>
-            <button class="act-btn d-btn" onclick="deleteData('${id}')">Delete</button>
-          </div>
+        <button class="act-btn e-btn" onclick="openEdit('${id}')">Edit</button>
+        <button class="act-btn d-btn" onclick="deleteData('${id}')">Delete</button>
+        </div>
         </td>
       `;
 
-        desktopTableBody.appendChild(row);
+        desktopTableBody.prepend(row);
       }
 
       // ===== MOBILE CARDS =====
