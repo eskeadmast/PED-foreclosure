@@ -354,7 +354,7 @@ td {
   white-space: nowrap; /* PREVENTS TEXT WRAPPING IN CELLS */
 }
 td.remarks-cell {
-  max-width: 120px; /* limit cell width */
+  max-width: 300px; /* limit cell width */
   padding: 1rem;
   border-bottom: 1px solid var(--slate-100);
   font-size: 0.85rem;
