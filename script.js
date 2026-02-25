@@ -207,7 +207,7 @@ function render(dataToRender) {
         <td>${item.engineerName || ""}</td>
         <td>${formatDate(item.dateOfReport)}</td>
         <td><span class="pill ${s}">${s}</span></td>
-        <td>${item.remarks || ""}</td>
+        <td style="width:120px">${item.remarks || ""}</td>
         <td>
           <div class="actions">
             <button class="act-btn e-btn" onclick="openEdit('${id}')">Edit</button>
