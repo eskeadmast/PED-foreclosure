@@ -353,6 +353,15 @@ td {
   font-size: 0.85rem;
   white-space: nowrap; /* PREVENTS TEXT WRAPPING IN CELLS */
 }
+td.remarks-cell {
+  max-width: 120px; /* limit cell width */
+  padding: 1rem;
+  border-bottom: 1px solid var(--slate-100);
+  font-size: 0.85rem;
+  white-space: normal; /* allow wrapping */
+  word-wrap: break-word; /* break long words if needed */
+  overflow-wrap: break-word; /* modern equivalent */
+}
 
 /* --- PILLS --- */
 .pill {
