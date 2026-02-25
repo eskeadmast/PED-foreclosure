@@ -344,14 +344,14 @@ th {
   color: var(--primary);
   text-transform: uppercase;
   border-bottom: 1px solid var(--slate-300);
-  white-space: nowrap; /* PREVENTS TEXT WRAPPING IN HEADERS */
+  white-space: normal; /* PREVENTS TEXT WRAPPING IN HEADERS */
 }
 
 td {
   padding: 1rem;
   border-bottom: 1px solid var(--slate-100);
   font-size: 0.85rem;
-  white-space: nowrap; /* PREVENTS TEXT WRAPPING IN CELLS */
+  white-space: normal; /* PREVENTS TEXT WRAPPING IN CELLS */
 }
 td.remarks-cell {
   max-width: 300px; /* limit cell width */
